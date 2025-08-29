@@ -1,6 +1,6 @@
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
+  <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bater Ponto</title>
     <!-- Inclui o Bootstrap para um design bonito -->
@@ -1505,6 +1505,8 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
         script.crossOrigin = 'anonymous';
         document.body.appendChild(script);
     });
+
+
 </script>
 </body>
 </html>
