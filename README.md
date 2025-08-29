@@ -1,5 +1,3 @@
-[Ponto.html](https://github.com/user-attachments/files/22036232/Ponto.html)
-<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
