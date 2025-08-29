@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -1502,20 +1502,21 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     }
 
     // Inicializar
-    (function inicializar() {
-        const usuarioAtual = localStorage.getItem('usuarioAtual');
-        if (usuarioAtual) {
-            const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
-            const ehAdmin = usuarios.find(usuario => usuario.nome === usuarioAtual)?.ehAdmin;
-            if (ehAdmin) {
-                mostrarTelaInicialAdmin();
-            } else {
-                mostrarTelaPrincipal();
-            }
+    (async function inicializar() {
+    await carregarUsuariosFirebase(); // Busca usuários no Firestore antes de tudo
+    const usuarioAtual = localStorage.getItem('usuarioAtual');
+    if (usuarioAtual) {
+        const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+        const ehAdmin = usuarios.find(usuario => usuario.nome === usuarioAtual)?.ehAdmin;
+        if (ehAdmin) {
+            mostrarTelaInicialAdmin();
         } else {
-            mostrarTelaLogin();
+            mostrarTelaPrincipal();
         }
-    })();
+    } else {
+        mostrarTelaLogin();
+    }
+})();
 
     // Carregar Bootstrap JS para modais e toasts
     document.addEventListener('DOMContentLoaded', () => {
@@ -1581,6 +1582,38 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
   // Tornando funções globais para uso no seu código
   window.registrarNoFirebase = registrarNoFirebase;
   window.loginNoFirebase = loginNoFirebase;
+import { getFirestore, collection, getDocs, doc, deleteDoc } 
+  from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const db = getFirestore(app);
+
+async function carregarUsuariosFirebase() {
+  try {
+    const querySnapshot = await getDocs(collection(db, "usuarios"));
+    const usuarios = [];
+    querySnapshot.forEach((doc) => {
+      usuarios.push(doc.data());
+    });
+    localStorage.setItem('usuarios', JSON.stringify(usuarios)); 
+    console.log("Usuários carregados do Firebase:", usuarios);
+  } catch (error) {
+    console.error("Erro ao carregar usuários do Firebase:", error);
+  }
+}
+
+async function excluirUsuarioFirebase(nome) {
+  try {
+    await deleteDoc(doc(db, "usuarios", nome));
+    console.log(`Usuário ${nome} removido do Firestore`);
+    return true;
+  } catch (error) {
+    console.error("Erro ao excluir usuário do Firebase:", error);
+    return false;
+  }
+}
+
+window.carregarUsuariosFirebase = carregarUsuariosFirebase;
+window.excluirUsuarioFirebase = excluirUsuarioFirebase;
 </script>
 </body>
 </html>
