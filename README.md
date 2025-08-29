@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -209,6 +209,184 @@
                     <input type="file" id="uploadFotoCadastro" class="form-control" accept="image/*">
                 </div>
                 <button id="botaoCadastrar" class="btn btn-primary w-100 mb-2" onclick="cadastrar()">Cadastrar</button>
+                <button id="botaoVoltarGerenciar" class="btn btn-secondary w-100" onclick="mostrarTelaGerenciarUsuarios()">Voltar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tela de Gerenciamento de Usuários -->
+    <div id="telaGerenciarUsuarios" class="container mt-5 escondido">
+        <div class="cartao shadow">
+            <div class="card-body">
+                <h1 class="card-title text-center">Gerenciar Usuários</h1>
+                <button class="btn btn-primary w-100 mb-3" onclick="mostrarTelaCadastro()">Cadastrar Novo Usuário</button>
+                <h3>Usuários</h3>
+                <div class="mb-4">
+                    <select id="selecionarUsuario" class="form-select" onchange="mostrarTelaPerfilUsuario()">
+                        <option value="">Selecione um usuário</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary w-100 mt-3" onclick="mostrarTelaInicialAdmin()">Voltar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tela de Perfil do Usuário -->
+    <div id="telaPerfilUsuario" class="container mt-5 escondido">
+        <div class="cartao shadow">
+            <div class="card-body">
+                <h1 class="card-title text-center">Perfil do Usuário</h1>
+                <div class="mb-3">
+                    <img id="fotoPerfil" class="foto-3x4 escondido" alt="Foto 3x4">
+                    <input type="file" id="uploadFoto" class="form-control" accept="image/*">
+                    <button id="botaoRemoverFoto" class="btn btn-outline-danger w-100 mt-2" onclick="removerFoto()">Remover Foto</button>
+                </div>
+                <div class="mb-3">
+                    <label for="editarNomeUsuario" class="form-label form-label-ajustado">Nome de Usuário</label>
+                    <input type="text" id="editarNomeUsuario" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label for="editarNomeCompleto" class="form-label form-label-ajustado">Nome Completo</label>
+                    <input type="text" id="editarNomeCompleto" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="editarCpf" class="form-label form-label-ajustado">CPF</label>
+                    <input type="text" id="editarCpf" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="editarDataNascimento" class="form-label form-label-ajustado">Data de Nascimento</label>
+                    <input type="date" id="editarDataNascimento" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="editarEndereco" class="form-label form-label-ajustado">Endereço</label>
+                    <input type="text" id="editarEndereco" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="editarDataAdmissao" class="form-label form-label-ajustado">Data de Admissão</label>
+                    <input type="date" id="editarDataAdmissao" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="editarCargo" class="form-label form-label-ajustado">Cargo</label>
+                    <input type="text" id="editarCargo" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="editarPisPasep" class="form-label form-label-ajustado">PIS/PASEP</label>
+                    <input type="text" id="editarPisPasep" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="editarCtps" class="form-label form-label-ajustado">CTPS</label>
+                    <input type="text" id="editarCtps" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="editarSenhaUsuario" class="form-label form-label-ajustado">Senha</label>
+                    <input type="password" id="editarSenhaUsuario" class="form-control" required>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" id="editarEhAdmin" class="form-check-input">
+                    <label for="editarEhAdmin" class="form-label form-label-ajustado">Administrador</label>
+                </div>
+                <input type="hidden" id="nomeUsuarioOriginal">
+                <button class="btn btn-info w-100 mb-2" onclick="exportarPerfilPDF()">Exportar PDF</button>
+                <button class="btn btn-primary w-100 mb-2" onclick="salvarEdicaoUsuario()">Salvar</button>
+                <button class="btn btn-danger w-100 mb-2" data-bs-toggle="modal" data-bs-target="#modalExcluirUsuario">Excluir Usuário</button>
+                <button class="btn btn-secondary w-100" onclick="mostrarTelaGerenciarUsuarios()">Voltar</button>
+            </div>
+        </div>
+        <div id="registrosUsuario" class="mt-4">
+            <h2 class="text-center">Registros do Usuário</h2>
+            <div class="text-center mb-3">
+                <button id="botaoExportarPDF" class="btn btn-info botao-ajustado escondido" onclick="exportarRegistrosPDF()">Exportar PDF</button>
+            </div>
+            <div class="tabela-responsiva">
+                <div class="tabela-cabecalho">
+                    <h3 id="nomeCompletoUsuarioPerfil"></h3>
+                    <p id="cpfUsuarioPerfil"></p>
+                </div>
+                <table class="table table-striped table-hover table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Dia</th>
+                            <th>Entrada</th>
+                            <th>Pausa</th>
+                            <th>Retorno</th>
+                            <th>Saída</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoRegistrosUsuario"></tbody>
+                </table>
+                <div id="relatorioUsuario" class="mt-3">
+                    <h3 class="text-center">Relatório</h3>
+                    <pre id="conteudoRelatorioUsuario" class="mb-0"></pre>
+                </div>
+                <div class="assinatura">
+                    <hr>
+                    <p>Assinatura do funcionário</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Registro -->
+    <div class="modal fade" id="modalEditarRegistro" tabindex="-1" aria-labelledby="rotuloModalEditarRegistro" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rotuloModalEditarRegistro">Editar Registro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editarDataHoraRegistro" class="form-label">Data/Hora</label>
+                        <input type="datetime-local" id="editarDataHoraRegistro" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarTipoRegistro" class="form-label">Tipo</label>
+                        <select id="editarTipoRegistro" class="form-select" required>
+                            <option value="Entrada">Entrada</option>
+                            <option value="Pausa">Pausa</option>
+                            <option value="Retorno">Retorno</option>
+                            <option value="Saída">Saída</option>
+                        </select>
+                    </div>
+                    <input type="hidden" id="indiceRegistro">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarEdicaoRegistro()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Confirmar Exclusão de Registro -->
+    <div class="modal fade" id="modalExcluirRegistro" tabindex="-1" aria-labelledby="rotuloModalExcluirRegistro" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rotuloModalExcluirRegistro">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="excluirRegistro()">Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Confirmar Exclusão de Usuário -->
+    <div class="modal fade" id="modalExcluirUsuario" tabindex="-1" aria-labelledby="rotuloModalExcluirUsuario" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rotuloModalExcluirUsuario">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Tem cert     <button id="botaoCadastrar" class="btn btn-primary w-100 mb-2" onclick="cadastrar()">Cadastrar</button>
                 <button id="botaoVoltarGerenciar" class="btn btn-secondary w-100" onclick="mostrarTelaGerenciarUsuarios()">Voltar</button>
             </div>
         </div>
