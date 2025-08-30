@@ -1155,6 +1155,30 @@ for (let dia = 1; dia <= 31; dia++) {
                     localStorage.setItem('usuarioAtual', novoNome);
                 }
 
+mostrarNotificacao('Usuário editado com sucesso!', 'success');
+mostrarTelaGerenciarUsuarios();
+
+// Atualizar no Firestore
+try {
+    await updateDoc(doc(db, "usuarios", novoNome), {
+        nome: novoNome,
+        nomeCompleto,
+        cpf,
+        dataNascimento,
+        endereco,
+        dataAdmissao,
+        cargo,
+        pisPasep,
+        ctps,
+        ehAdmin,
+        foto
+    });
+    console.log("Usuário atualizado no Firestore:", novoNome);
+} catch (error) {
+    console.error("Erro ao atualizar no Firestore:", error);
+    mostrarNotificacao('Erro ao sincronizar edição com o servidor.', 'danger');
+}
+
                 mostrarNotificacao('Usuário editado com sucesso!', 'success');
                 mostrarTelaGerenciarUsuarios();
             } else {
@@ -1185,7 +1209,6 @@ for (let dia = 1; dia <= 31; dia++) {
             mostrarNotificacao('Usuário excluído com sucesso!', 'success');
             mostrarTelaGerenciarUsuarios();
         }
-// Cadastrar usuário
 function cadastrar() {
     const usuarioAtual = localStorage.getItem('usuarioAtual');
     const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
@@ -1227,6 +1250,7 @@ function cadastrar() {
         return;
     }
 
+    // Salvar no localStorage
     usuarios.push({
         nome,
         nomeCompleto,
@@ -1237,34 +1261,53 @@ function cadastrar() {
         cargo,
         pisPasep,
         ctps,
-        senha,
+        senha, // Cuidado: não é ideal armazenar senhas no localStorage
         ehAdmin,
         foto
     });
     localStorage.setItem('usuarios', JSON.stringify(usuarios));
-    mostrarNotificacao('Usuário cadastrado com sucesso!', 'success');
-    mostrarTelaGerenciarUsuarios();
-    document.getElementById('nomeUsuarioCadastro').value = '';
-    document.getElementById('nomeCompletoCadastro').value = '';
-    document.getElementById('cpfCadastro').value = '';
-    document.getElementById('dataNascimentoCadastro').value = '';
-    document.getElementById('enderecoCadastro').value = '';
-    document.getElementById('dataAdmissaoCadastro').value = '';
-    document.getElementById('cargoCadastro').value = '';
-    document.getElementById('pisPasepCadastro').value = '';
-    document.getElementById('ctpsCadastro').value = '';
-    document.getElementById('senhaCadastro').value = '';
-    document.getElementById('ehAdmin').checked = false;
-    document.getElementById('uploadFotoCadastro').value = '';
 
-    // 🔹 Sincroniza com Firebase
-    if (window.registrarNoFirebase) {
+    // Salvar no Firestore
+    setDoc(doc(db, "usuarios", nome), {
+        nome,
+        nomeCompleto,
+        cpf,
+        dataNascimento,
+        endereco,
+        dataAdmissao,
+        cargo,
+        pisPasep,
+        ctps,
+        ehAdmin,
+        foto
+        // Não salve a senha aqui; ela fica no Firebase Auth
+    }).then(() => {
+        console.log("Usuário salvo no Firestore:", nome);
+        mostrarNotificacao('Usuário cadastrado com sucesso!', 'success');
+        // Criar no Firebase Auth
         registrarNoFirebase(nome, senha).then(ok => {
             if (!ok) {
-                mostrarNotificacao('Erro ao sincronizar com servidor.', 'danger');
+                mostrarNotificacao('Erro ao sincronizar autenticação.', 'danger');
             }
         });
-    }
+        // Limpar formulário e voltar
+        mostrarTelaGerenciarUsuarios();
+        document.getElementById('nomeUsuarioCadastro').value = '';
+        document.getElementById('nomeCompletoCadastro').value = '';
+        document.getElementById('cpfCadastro').value = '';
+        document.getElementById('dataNascimentoCadastro').value = '';
+        document.getElementById('enderecoCadastro').value = '';
+        document.getElementById('dataAdmissaoCadastro').value = '';
+        document.getElementById('cargoCadastro').value = '';
+        document.getElementById('pisPasepCadastro').value = '';
+        document.getElementById('ctpsCadastro').value = '';
+        document.getElementById('senhaCadastro').value = '';
+        document.getElementById('ehAdmin').checked = false;
+        document.getElementById('uploadFotoCadastro').value = '';
+    }).catch(error => {
+        console.error("Erro ao salvar no Firestore:", error);
+        mostrarNotificacao('Erro ao sincronizar com o servidor.', 'danger');
+    });
 }
 
 
@@ -1421,6 +1464,18 @@ for (let dia = 1; dia <= 31; dia++) {
             registros.push(registro);
             localStorage.setItem('registros', JSON.stringify(registros));
 
+mostrarNotificacao(`Ponto de ${tipo} registrado com sucesso!`, 'success');
+carregarRegistros();
+
+// Salvar no Firestore
+try {
+    await addDoc(collection(db, "registros"), registro);
+    console.log("Registro salvo no Firestore:", registro);
+} catch (error) {
+    console.error("Erro ao salvar registro no Firestore:", error);
+    mostrarNotificacao('Erro ao sincronizar registro com o servidor.', 'danger');
+}
+
             mostrarNotificacao(`Ponto de ${tipo} registrado com sucesso!`, 'success');
             carregarRegistros();
         }
@@ -1533,7 +1588,8 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
   // Importando Firebase
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-
+import { getFirestore, collection, getDocs, doc, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    
   // Configuração do Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyCwHEYAAWzuArnjHKyBB2HQornlGXgXcwc",
@@ -1548,7 +1604,7 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
   // Inicializa Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-
+const db = getFirestore(app);
   // Função para criar conta no Firebase (usando usuário + senha)
   async function registrarNoFirebase(usuario, senha) {
     const emailFake = `${usuario}@admz.app`; // Cria email fictício
@@ -1587,18 +1643,29 @@ import { getFirestore, collection, getDocs, doc, deleteDoc }
 
 const db = getFirestore(app);
 
-async function carregarUsuariosFirebase() {
-  try {
-    const querySnapshot = await getDocs(collection(db, "usuarios"));
-    const usuarios = [];
-    querySnapshot.forEach((doc) => {
-      usuarios.push(doc.data());
-    });
-    localStorage.setItem('usuarios', JSON.stringify(usuarios)); 
-    console.log("Usuários carregados do Firebase:", usuarios);
-  } catch (error) {
-    console.error("Erro ao carregar usuários do Firebase:", error);
-  }
+async function carregarRegistros() {
+    const usuarioAtual = localStorage.getItem('usuarioAtual');
+    const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+    const usuario = usuarios.find(u => u.nome === usuarioAtual);
+    let registros = JSON.parse(localStorage.getItem('registros') || '[]');
+
+    // Buscar registros do Firestore
+    try {
+        const querySnapshot = await getDocs(collection(db, "registros"));
+        const registrosFirestore = [];
+        querySnapshot.forEach(doc => {
+            registrosFirestore.push(doc.data());
+        });
+        // Mesclar registros locais com Firestore, evitando duplicatas
+        registrosFirestore.forEach(reg => {
+            if (!registros.some(r => r.usuario === reg.usuario && r.dataHora === reg.dataHora && r.tipo === reg.tipo)) {
+                registros.push(reg);
+            }
+        });
+        localStorage.setItem('registros', JSON.stringify(registros));
+    } catch (error) {
+        console.error("Erro ao carregar registros do Firestore:", error);
+    }
 }
 
 async function excluirUsuarioFirebase(nome) {
