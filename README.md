@@ -1526,8 +1526,8 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
         script.crossOrigin = 'anonymous';
         document.body.appendChild(script);
     });
-    <script type="module">
-  // Firebase SDKs
+   <script type="module">
+  // Diagnóstico Firebase - cole no lugar do seu script atual
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import {
     getAuth,
@@ -1537,7 +1537,6 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     browserLocalPersistence,
     onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-
   import {
     getFirestore,
     collection,
@@ -1547,7 +1546,7 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     deleteDoc
   } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-  // Config
+  // ---------- CONFIGURE AQUI seu firebaseConfig (confirme que é o mesmo do console) ----------
   const firebaseConfig = {
     apiKey: "AIzaSyCwHEYAAWzuArnjHKyBB2HQornlGXgXcwc",
     authDomain: "admz-4cc94.firebaseapp.com",
@@ -1557,120 +1556,135 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     appId: "1:1058002382869:web:01e295c26aab0c662b1e1c",
     measurementId: "G-WFJ4D9JFGC"
   };
+  // ----------------------------------------------------------------------------------------
 
-  // Init
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // Persistência no navegador (mantém login entre abas/dispositivos)
-  await setPersistence(auth, browserLocalPersistence);
-
-  // Util: normaliza entrada do usuário -> email e id de documento
-  function montarEmail(usuarioOuEmail) {
-    return usuarioOuEmail.includes("@")
-      ? usuarioOuEmail.trim().toLowerCase()
-      : `${usuarioOuEmail.trim().toLowerCase()}@admz.app`;
-  }
-  function docIdFromUsuario(usuarioOuEmail) {
-    // usa a parte antes do @ como id do doc
-    const email = montarEmail(usuarioOuEmail);
-    return email.split("@")[0];
+  // tenta persistir (mantém sessão)
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    console.log("[DIAG] setPersistence OK");
+  } catch (e) {
+    console.error("[DIAG] setPersistence ERRO", e.code, e.message);
   }
 
-  // REGISTRO (Auth + Firestore)
+  // helpers
+  const montarEmail = (u) =>
+    (u || "").includes("@") ? u.trim().toLowerCase() : `${u.trim().toLowerCase()}@admz.app`;
+  const docIdFromUsuario = (u) => montarEmail(u).split("@")[0];
+
+  function logErr(tag, err) {
+    console.error(`[DIAG][${tag}]`, err.code ?? "", err.message ?? err);
+  }
+
+  // REGISTRO (Auth + Firestore) - NÃO SALVA SENHA NO FIRESTORE (por segurança)
   async function registrarNoFirebase(usuarioOuEmail, senha) {
     const email = montarEmail(usuarioOuEmail);
     const docId = docIdFromUsuario(usuarioOuEmail);
+    console.log("[DIAG] tentando registrar ->", email);
     try {
-      await createUserWithEmailAndPassword(auth, email, senha);
-
-      // NUNCA salve a senha no Firestore
-      await setDoc(doc(db, "usuarios", docId), {
-        nome: docId,
-        email,
-        criadoEm: new Date().toISOString()
-      }, { merge: true });
-
-      console.log("[OK] Registro feito (Auth + Firestore):", email);
-      return true;
-    } catch (error) {
-      console.error("[ERRO registro]", error.code, error.message);
-      if (error.code === "auth/email-already-in-use") {
-        // Se o usuário já existe no Auth, garanta que o doc exista no Firestore
+      const cred = await createUserWithEmailAndPassword(auth, email, senha);
+      console.log("[DIAG] createUserWithEmailAndPassword OK", cred.user?.email ?? "");
+      try {
         await setDoc(doc(db, "usuarios", docId), {
           nome: docId,
           email,
-          atualizadoEm: new Date().toISOString()
+          criadoEm: new Date().toISOString()
         }, { merge: true });
-        console.warn("[WARN] Email já existia. Sincronizei Firestore e segui em frente.");
-        return true;
+        console.log("[DIAG] setDoc usuarios OK:", docId);
+      } catch (e) {
+        logErr("setDoc-registrar", e);
+        throw e;
       }
-      alert("Falha no registro: " + error.code);
-      return false;
+      return true;
+    } catch (e) {
+      logErr("registrar", e);
+      return { ok: false, code: e.code, message: e.message };
     }
   }
 
-  // LOGIN (Auth) — aceita "admin" ou "admin@admz.app"
+  // LOGIN (Auth)
   async function loginNoFirebase(usuarioOuEmail, senha) {
     const email = montarEmail(usuarioOuEmail);
+    console.log("[DIAG] tentando login ->", email);
     try {
-      await signInWithEmailAndPassword(auth, email, senha);
-      console.log("[OK] Login bem-sucedido:", email);
-      return true;
-    } catch (error) {
-      console.error("[ERRO login]", error.code, error.message);
-      alert("Falha no login: " + error.code);
-      return false;
+      const cred = await signInWithEmailAndPassword(auth, email, senha);
+      console.log("[DIAG] signInWithEmailAndPassword OK", cred.user?.email ?? "");
+      return { ok: true, email: cred.user?.email ?? null };
+    } catch (e) {
+      logErr("login", e);
+      return { ok: false, code: e.code, message: e.message };
     }
   }
 
-  // LISTA USUÁRIOS (somente depois de logado)
+  // CARREGAR USUÁRIOS
   async function carregarUsuariosFirebase() {
+    console.log("[DIAG] tentando getDocs(collection usuarios) ...");
     try {
       const snap = await getDocs(collection(db, "usuarios"));
-      const usuarios = snap.docs.map(d => d.data());
-      console.log("[OK] Usuários do Firestore:", usuarios);
-      return usuarios;
-    } catch (error) {
-      console.error("[ERRO carregar usuários]", error.code, error.message);
-      alert("Erro ao carregar usuários: " + error.code);
-      return [];
+      const usuarios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      console.log("[DIAG] getDocs OK -> usuarios:", usuarios);
+      return { ok: true, usuarios };
+    } catch (e) {
+      logErr("carregarUsuarios", e);
+      return { ok: false, code: e.code, message: e.message };
     }
   }
 
-  // EXCLUIR USUÁRIO (apenas do Firestore)
-  async function excluirUsuarioFirebase(nomeOuEmail) {
-    const docId = docIdFromUsuario(nomeOuEmail);
+  // TESTE R/W (cria um doc de diagnóstico e tenta ler usuarios)
+  async function testeEscritaLeitura() {
+    const id = "diagnostico_test";
+    console.log("[DIAG] iniciando teste de escrita/leitura no Firestore...");
     try {
-      await deleteDoc(doc(db, "usuarios", docId));
-      console.log(`[OK] Usuário removido do Firestore: ${docId}`);
-      return true;
-    } catch (error) {
-      console.error("[ERRO excluir usuário]", error.code, error.message);
-      alert("Erro ao excluir: " + error.code);
-      return false;
+      await setDoc(doc(db, "diagnosticos", id), {
+        teste: true,
+        ts: new Date().toISOString()
+      }, { merge: true });
+      console.log("[DIAG] escrita diagnostico OK");
+    } catch (e) {
+      logErr("testeEscrita", e);
     }
+
+    const leitura = await carregarUsuariosFirebase();
+    return leitura;
   }
 
-  // Só carrega dados depois que o Auth disser que está logado
-  onAuthStateChanged(auth, async (user) => {
+  // onAuthStateChanged para ver se o user aparece
+  onAuthStateChanged(auth, (user) => {
     if (user) {
-      console.log("[AUTH] Logado como:", user.email);
-      // Exemplo: carregar lista assim que logar
-      try { await carregarUsuariosFirebase(); } catch {}
+      console.log("[DIAG] onAuthStateChanged -> LOGADO:", user.email);
     } else {
-      console.log("[AUTH] Não logado");
+      console.log("[DIAG] onAuthStateChanged -> NÃO LOGADO");
     }
   });
 
-  // Expor globais
-  window.registrarNoFirebase = registrarNoFirebase;
-  window.loginNoFirebase = loginNoFirebase;
-  window.carregarUsuariosFirebase = carregarUsuariosFirebase;
-  window.excluirUsuarioFirebase = excluirUsuarioFirebase;
-</script>
+  // Exporta global para você chamar do console
+  window.__diag = {
+    registrarNoFirebase,
+    loginNoFirebase,
+    carregarUsuariosFirebase,
+    excluirUsuarioFirebase: async (nome) => {
+      const id = docIdFromUsuario(nome);
+      try {
+        await deleteDoc(doc(db, "usuarios", id));
+        console.log(`[DIAG] deleteDoc OK ${id}`);
+        return { ok: true };
+      } catch (e) {
+        logErr("excluirUsuario", e);
+        return { ok: false, code: e.code, message: e.message };
+      }
+    },
+    testeEscritaLeitura
+  };
 
+  console.log("[DIAG] script de diagnóstico pronto. No console, chame:");
+  console.log("  await __diag.registrarNoFirebase('admin','suaSenha')");
+  console.log("  await __diag.loginNoFirebase('admin','suaSenha')");
+  console.log("  await __diag.carregarUsuariosFirebase()");
+  console.log("  await __diag.testeEscritaLeitura()");
+</script>
 
   </body>
   </html>
