@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +9,7 @@
         .section { display: none; }
         .section.active { display: block; }
         h2 { color: #333; }
-        input, select, button { padding: 8px; margin: 5px 0; width: calc(100% - 16px); }
+        input, select, button { padding: 8px; margin: 5px 0; width: calc(100% - 16px); box-sizing: border-box; }
         button { background: #007BFF; color: white; border: none; cursor: pointer; }
         button:hover { background: #0056b3; }
         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
@@ -18,6 +17,10 @@
         th { background: #f2f2f2; }
         .error { color: red; }
         .success { color: green; }
+        @media (max-width: 600px) {
+            button { width: auto; display: inline-block; margin-right: 10px; }
+            .container { padding: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -28,6 +31,7 @@
             <input type="text" id="loginUsername" placeholder="Nome de Usuário" required>
             <input type="password" id="loginPassword" placeholder="Senha" required>
             <button onclick="login()">Entrar</button>
+            <p class="error" id="loginError"></p>
         </div>
 
         <!-- Admin Dashboard -->
@@ -56,6 +60,8 @@
             <label><input type="checkbox" id="regIsAdmin"> Administrador</label>
             <button onclick="registerUser()">Cadastrar</button>
             <button onclick="showSection('manageUsers')">Voltar</button>
+            <p class="success" id="registerSuccess"></p>
+            <p class="error" id="registerError"></p>
         </div>
 
         <!-- Manage Users -->
@@ -89,6 +95,7 @@
             <button onclick="saveUserProfile()">Salvar</button>
             <button onclick="showDeleteUserConfirm()">Excluir Usuário</button>
             <button onclick="showSection('manageUsers')">Voltar</button>
+            <button onclick="showSection('userRecords')">Ver Registros</button>
         </div>
 
         <!-- User Records -->
@@ -110,7 +117,7 @@
             </table>
             <h3>Relatório</h3>
             <p id="reportSummary"></p>
-            <p>Assinatura do funcionário: ____________________</p>
+            <div class="assinatura">Assinatura do funcionário: ____________________</div>
             <button onclick="showSection('userProfile')">Voltar</button>
         </div>
 
@@ -164,6 +171,7 @@
             <button onclick="exportRecordsCSV()">Exportar CSV</button>
             <button onclick="showClearRecordsConfirm()">Limpar Registros</button>
             <button onclick="logout()">Sair</button>
+            <button onclick="showSection('myRecords')">Meus Registros</button>
         </div>
 
         <!-- My Records -->
@@ -183,7 +191,7 @@
             </table>
             <h3>Relatório</h3>
             <p id="myReportSummary"></p>
-            <p>Assinatura do funcionário: ____________________</p>
+            <div class="assinatura">Assinatura do funcionário: ____________________</div>
             <button onclick="showSection('timeTracking')">Voltar</button>
         </div>
 
@@ -202,18 +210,46 @@
         let currentUser = null;
         let editingRecord = null;
 
+        // Inicializar administrador padrão
+        function initializeAdmin() {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            if (!users.some(u => u.username === 'admin')) {
+                users.push({
+                    username: 'admin',
+                    fullName: 'Administrador',
+                    cpf: '',
+                    birthDate: '',
+                    address: '',
+                    admissionDate: '',
+                    position: 'Administrador',
+                    pis: '',
+                    ctps: '',
+                    password: 'admin123',
+                    isAdmin: true,
+                    photo: null
+                });
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+        }
+
+        // Mostrar seção
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
-            document.getElementById(sectionId).classList.add('active');
+            const section = document.getElementById(sectionId);
+            if (section) section.classList.add('active');
             if (sectionId === 'manageUsers') loadUsers();
             if (sectionId === 'userProfile') loadUserProfile();
             if (sectionId === 'userRecords') loadUserRecords();
             if (sectionId === 'myRecords') loadMyRecords();
             if (sectionId === 'timeTracking') updateCurrentTime();
+            document.getElementById('loginError').textContent = '';
+            document.getElementById('registerSuccess').textContent = '';
+            document.getElementById('registerError').textContent = '';
         }
 
+        // Login
         function login() {
-            const username = document.getElementById('loginUsername').value;
+            const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
             const users = JSON.parse(localStorage.getItem('users') || '[]');
             const user = users.find(u => u.username === username && u.password === password);
@@ -223,18 +259,22 @@
                 document.getElementById('trackingUsername').textContent = user.fullName;
                 showSection(user.isAdmin ? 'adminDashboard' : 'timeTracking');
             } else {
-                alert('Usuário ou senha inválidos');
+                document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
             }
         }
 
+        // Logout
         function logout() {
             currentUser = null;
             showSection('login');
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
         }
 
+        // Cadastrar usuário
         function registerUser() {
             const user = {
-                username: document.getElementById('regUsername').value,
+                username: document.getElementById('regUsername').value.trim(),
                 fullName: document.getElementById('regFullName').value,
                 cpf: document.getElementById('regCPF').value,
                 birthDate: document.getElementById('regBirthDate').value,
@@ -247,17 +287,22 @@
                 isAdmin: document.getElementById('regIsAdmin').checked,
                 photo: null
             };
+            if (!user.username || !user.fullName || !user.password) {
+                document.getElementById('registerError').textContent = 'Preencha os campos obrigatórios';
+                return;
+            }
             const users = JSON.parse(localStorage.getItem('users') || '[]');
             if (users.some(u => u.username === user.username)) {
-                alert('Usuário já existe');
+                document.getElementById('registerError').textContent = 'Usuário já existe';
                 return;
             }
             users.push(user);
             localStorage.setItem('users', JSON.stringify(users));
-            alert('Usuário cadastrado com sucesso');
-            showSection('manageUsers');
+            document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
+            setTimeout(() => showSection('manageUsers'), 1000);
         }
 
+        // Carregar lista de usuários
         function loadUsers() {
             const select = document.getElementById('userSelect');
             select.innerHTML = '<option value="">Selecione um usuário</option>';
@@ -270,6 +315,7 @@
             });
         }
 
+        // Carregar perfil do usuário
         function viewUserProfile() {
             const username = document.getElementById('userSelect').value;
             if (!username) return;
@@ -291,6 +337,7 @@
             }
         }
 
+        // Salvar perfil do usuário
         function saveUserProfile() {
             const username = document.getElementById('profileUsername').value;
             const users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -316,10 +363,12 @@
             }
         }
 
+        // Confirmação de exclusão de usuário
         function showDeleteUserConfirm() {
             showSection('deleteUserConfirm');
         }
 
+        // Excluir usuário
         function deleteUser() {
             const username = document.getElementById('profileUsername').value;
             let users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -332,64 +381,95 @@
             showSection('manageUsers');
         }
 
+        // Atualizar horário atual
         function updateCurrentTime() {
             const now = new Date();
             document.getElementById('currentTime').textContent = now.toLocaleString('pt-BR');
             setTimeout(updateCurrentTime, 1000);
         }
 
+        // Registrar ponto
         function recordTime(type) {
+            if (!currentUser) {
+                alert('Usuário não logado');
+                return;
+            }
             const records = JSON.parse(localStorage.getItem('records') || '[]');
+            const date = new Date();
+            const dayOfWeek = date.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                alert('Não é possível registrar ponto em finais de semana');
+                return;
+            }
             records.push({
                 username: currentUser.username,
-                date: new Date().toISOString().split('T')[0],
-                time: new Date().toLocaleTimeString('pt-BR'),
+                date: date.toISOString().split('T')[0],
+                time: date.toLocaleTimeString('pt-BR'),
                 type
             });
             localStorage.setItem('records', JSON.stringify(records));
             alert(`${type} registrada com sucesso`);
         }
 
+        // Carregar registros do usuário
         function loadUserRecords() {
             const username = document.getElementById('userSelect').value;
             const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === username);
             const table = document.getElementById('recordsTable');
             table.innerHTML = '';
             const groupedRecords = groupRecordsByDate(records);
-            for (const date in groupedRecords) {
+            const allDates = getAllDates();
+            allDates.forEach(date => {
+                const dayOfWeek = new Date(date).getDay();
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${date}</td>
-                    <td>${groupedRecords[date].Entrada || ''}</td>
-                    <td>${groupedRecords[date].Pausa || ''}</td>
-                    <td>${groupedRecords[date].Retorno || ''}</td>
-                    <td>${groupedRecords[date].Saída || ''}</td>
-                    <td><button onclick="editRecord('${username}', '${date}', 'Entrada')">Editar</button></td>
-                `;
+                if (dayOfWeek === 6) { // Sábado
+                    row.innerHTML = `<td>${date}</td><td colspan="4">Sábado = COMPENSADO</td><td></td>`;
+                } else if (dayOfWeek === 0) { // Domingo
+                    row.innerHTML = `<td>${date}</td><td colspan="4">Domingo = DSR</td><td></td>`;
+                } else {
+                    row.innerHTML = `
+                        <td>${date}</td>
+                        <td>${groupedRecords[date]?.Entrada || ''}</td>
+                        <td>${groupedRecords[date]?.Pausa || ''}</td>
+                        <td>${groupedRecords[date]?.Retorno || ''}</td>
+                        <td>${groupedRecords[date]?.Saída || ''}</td>
+                        <td><button onclick="editRecord('${username}', '${date}', 'Entrada')">Editar</button></td>
+                    `;
+                }
                 table.appendChild(row);
-            }
+            });
             updateReportSummary(records, 'reportSummary');
         }
 
+        // Carregar meus registros
         function loadMyRecords() {
             const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === currentUser.username);
             const table = document.getElementById('myRecordsTable');
             table.innerHTML = '';
             const groupedRecords = groupRecordsByDate(records);
-            for (const date in groupedRecords) {
+            const allDates = getAllDates();
+            allDates.forEach(date => {
+                const dayOfWeek = new Date(date).getDay();
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${date}</td>
-                    <td>${groupedRecords[date].Entrada || ''}</td>
-                    <td>${groupedRecords[date].Pausa || ''}</td>
-                    <td>${groupedRecords[date].Retorno || ''}</td>
-                    <td>${groupedRecords[date].Saída || ''}</td>
-                `;
+                if (dayOfWeek === 6) {
+                    row.innerHTML = `<td>${date}</td><td colspan="4">Sábado = COMPENSADO</td>`;
+                } else if (dayOfWeek === 0) {
+                    row.innerHTML = `<td>${date}</td><td colspan="4">Domingo = DSR</td>`;
+                } else {
+                    row.innerHTML = `
+                        <td>${date}</td>
+                        <td>${groupedRecords[date]?.Entrada || ''}</td>
+                        <td>${groupedRecords[date]?.Pausa || ''}</td>
+                        <td>${groupedRecords[date]?.Retorno || ''}</td>
+                        <td>${groupedRecords[date]?.Saída || ''}</td>
+                    `;
+                }
                 table.appendChild(row);
-            }
+            });
             updateReportSummary(records, 'myReportSummary');
         }
 
+        // Agrupar registros por data
         function groupRecordsByDate(records) {
             const grouped = {};
             records.forEach(r => {
@@ -399,6 +479,19 @@
             return grouped;
         }
 
+        // Obter todas as datas (exemplo: últimos 30 dias)
+        function getAllDates() {
+            const dates = [];
+            const today = new Date();
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                dates.push(date.toISOString().split('T')[0]);
+            }
+            return dates;
+        }
+
+        // Atualizar resumo do relatório
         function updateReportSummary(records, elementId) {
             const totalHours = records.reduce((sum, r) => {
                 if (r.type === 'Saída' && records.some(rec => rec.date === r.date && rec.type === 'Entrada')) {
@@ -409,141 +502,121 @@
                 }
                 return sum;
             }, 0);
-            document.getElementById(elementId).textContent = `Total de horas trabalhadas: ${totalHours.toFixed(2)} horas`;
-        }
+            document.getElementById(elementId).textContent = `Total de horas trabalhKits de ferramentas sugeridos para tornar seu sistema web funcional online:
 
-        function editRecord(username, date, type) {
-            const records = JSON.parse(localStorage.getItem('records') || '[]');
-            const record = records.find(r => r.username === username && r.date === date && r.type === type);
-            if (record) {
-                editingRecord = record;
-                document.getElementById('editRecordDateTime').value = `${record.date}T${record.time}`;
-                document.getElementById('editRecordType').value = record.type;
-                showSection('editRecord');
-            }
-        }
+1. **Hospedagem Online**: Para hospedar o sistema online, você pode usar plataformas gratuitas como **GitHub Pages** ou **Netlify**. Aqui está como fazer isso:
 
-        function saveRecord() {
-            const records = JSON.parse(localStorage.getItem('records') || '[]');
-            const index = records.findIndex(r => r === editingRecord);
-            if (index !== -1) {
-                const dateTime = document.getElementById('editRecordDateTime').value;
-                records[index] = {
-                    ...editingRecord,
-                    date: dateTime.split('T')[0],
-                    time: dateTime.split('T')[1],
-                    type: document.getElementById('editRecordType').value
-                };
-                localStorage.setItem('records', JSON.stringify(records));
-                alert('Registro atualizado com sucesso');
-                showSection('userRecords');
-            }
-        }
+   - **GitHub Pages**:
+     1. Crie um repositório no GitHub.
+     2. Faça upload do arquivo `index.html` para o repositório.
+     3. Ative o GitHub Pages nas configurações do repositório, escolhendo a branch principal.
+     4. O site estará disponível em `https://<seu-usuario>.github.io/<nome-do-repositorio>`.
 
-        function cancelEditRecord() {
-            showSection('userRecords');
-        }
+   - **Netlify**:
+     1. Crie uma conta no Netlify.
+     2. Conecte seu repositório GitHub ou faça upload do arquivo `index.html`.
+     3. Configure o site e obtenha um link como `https://<seu-site>.netlify.app`.
 
-        function showDeleteRecordConfirm() {
-            showSection('deleteRecordConfirm');
-        }
+   Ambas as opções são gratuitas e fáceis de usar. O sistema funcionará online, mas os dados ainda serão armazenados no localStorage do navegador do usuário. Para persistência de dados entre dispositivos, você precisará de um backend (ex.: Firebase).
 
-        function deleteRecord() {
-            const records = JSON.parse(localStorage.getItem('records') || '[]');
-            const index = records.findIndex(r => r === editingRecord);
-            if (index !== -1) {
-                records.splice(index, 1);
-                localStorage.setItem('records', JSON.stringify(records));
-                alert('Registro excluído com sucesso');
-                showSection('userRecords');
-            }
-        }
+2. **Validações Adicionais**: Com base nas suas mensagens anteriores, você mencionou interesse em validações, como para CPF. Aqui está um exemplo de validação de CPF no cadastro:
 
-        function cancelDeleteRecord() {
-            showSection('userRecords');
-        }
+   ```javascript
+   function validarCPF(cpf) {
+       cpf = cpf.replace(/[^\d]+/g, '');
+       if (cpf.length !== 11) return false;
+       let soma = 0;
+       for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
+       let resto = (soma * 10) % 11;
+       if (resto === 10 || resto === 11) resto = 0;
+       if (resto !== parseInt(cpf.charAt(9))) return false;
+       soma = 0;
+       for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
+       resto = (soma * 10) % 11;
+       if (resto === 10 || resto === 11) resto = 0;
+       return resto === parseInt(cpf.charAt(10));
+   }
 
-        function showClearRecordsConfirm() {
-            showSection('clearRecordsConfirm');
-        }
+   // Adicionar na função registerUser
+   function registerUser() {
+       const cpf = document.getElementById('regCPF').value;
+       if (!validarCPF(cpf)) {
+           document.getElementById('registerError').textContent = 'CPF inválido';
+           return;
+       }
+       // Restante do código...
+   }
+   ```
 
-        function clearRecords() {
-            let records = JSON.parse(localStorage.getItem('records') || '[]');
-            records = records.filter(r => r.username !== currentUser.username);
-            localStorage.setItem('records', JSON.stringify(records));
-            alert('Registros limpos com sucesso');
-            showSection('timeTracking');
-        }
+3. **Integração com Firebase**: Você mencionou anteriormente interesse em usar Firebase para salvar cadastros. Para isso, você precisa:
+   - Criar um projeto no Firebase (https://console.firebase.google.com).
+   - Obter as credenciais (API Key, Auth Domain, etc.).
+   - Adicionar o SDK do Firebase ao seu projeto:
 
-        function exportRecordsPDF() {
-            const username = document.getElementById('userSelect').value;
-            const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === username);
-            const doc = new jsPDF();
-            doc.text(`Registros do Usuário: ${username}`, 10, 10);
-            let y = 20;
-            const groupedRecords = groupRecordsByDate(records);
-            for (const date in groupedRecords) {
-                doc.text(`${date}: Entrada: ${groupedRecords[date].Entrada || ''}, Pausa: ${groupedRecords[date].Pausa || ''}, Retorno: ${groupedRecords[date].Retorno || ''}, Saída: ${groupedRecords[date].Saída || ''}`, 10, y);
-                y += 10;
-            }
-            doc.text(`Total de horas trabalhadas: ${records.reduce((sum, r) => {
-                if (r.type === 'Saída' && records.some(rec => rec.date === r.date && rec.type === 'Entrada')) {
-                    const entry = records.find(rec => rec.date === r.date && rec.type === 'Entrada');
-                    const exit = new Date(`${r.date} ${r.time}`);
-                    const start = new Date(`${r.date} ${entry.time}`);
-                    return sum + (exit - start) / (1000 * 60 * 60);
-                }
-                return sum;
-            }, 0).toFixed(2)} horas`, 10, y + 10);
-            doc.text('Assinatura do funcionário: ____________________', 10, y + 20);
-            doc.save(`registros_${username}.pdf`);
-        }
+   ```html
+   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+   ```
 
-        function exportUserProfilePDF() {
-            const username = document.getElementById('profileUsername').value;
-            const doc = new jsPDF();
-            doc.text(`Perfil do Usuário: ${username}`, 10, 10);
-            doc.text(`Nome Completo: ${document.getElementById('profileFullName').value}`, 10, 20);
-            doc.text(`CPF: ${document.getElementById('profileCPF').value}`, 10, 30);
-            doc.text(`Data de Nascimento: ${document.getElementById('profileBirthDate').value}`, 10, 40);
-            doc.text(`Endereço: ${document.getElementById('profileAddress').value}`, 10, 50);
-            doc.text(`Data de Admissão: ${document.getElementById('profileAdmissionDate').value}`, 10, 60);
-            doc.text(`Cargo: ${document.getElementById('profilePosition').value}`, 10, 70);
-            doc.text(`PIS/PASEP: ${document.getElementById('profilePIS').value}`, 10, 80);
-            doc.text(`CTPS: ${document.getElementById('profileCTPS').value}`, 10, 90);
-            doc.text(`Administrador: ${document.getElementById('profileIsAdmin').checked ? 'Sim' : 'Não'}`, 10, 100);
-            doc.save(`perfil_${username}.pdf`);
-        }
+   - Configurar o Firebase no JavaScript:
 
-        function exportRecordsCSV() {
-            const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === currentUser.username);
-            const groupedRecords = groupRecordsByDate(records);
-            let csv = 'Dia,Entrada,Pausa,Retorno,Saída\n';
-            for (const date in groupedRecords) {
-                csv += `${date},${groupedRecords[date].Entrada || ''},${groupedRecords[date].Pausa || ''},${groupedRecords[date].Retorno || ''},${groupedRecords[date].Saída || ''}\n`;
-            }
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `registros_${currentUser.username}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
+   ```javascript
+   const firebaseConfig = {
+       apiKey: "SUA_API_KEY",
+       authDomain: "SEU_PROJETO.firebaseapp.com",
+       projectId: "SEU_PROJETO",
+       // Outras configurações
+   };
+   firebase.initializeApp(firebaseConfig);
+   const db = firebase.firestore();
 
-        function removePhoto() {
-            const username = document.getElementById('profileUsername').value;
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const index = users.findIndex(u => u.username === username);
-            if (index !== -1) {
-                users[index].photo = null;
-                localStorage.setItem('users', JSON.stringify(users));
-                alert('Foto removida com sucesso');
-            }
-        }
+   // Exemplo: salvar usuário no Firestore
+   function registerUser() {
+       const user = {
+           username: document.getElementById('regUsername').value.trim(),
+           fullName: document.getElementById('regFullName').value,
+           // Outros campos
+           email: `${document.getElementById('regUsername').value}@admz.app`, // Email fake
+           password: document.getElementById('regPassword').value
+       };
+       if (!validarCPF(document.getElementById('regCPF').value)) {
+           document.getElementById('registerError').textContent = 'CPF inválido';
+           return;
+       }
+       firebase.auth().createUserWithEmailAndPassword(user.email, user.password)
+           .then(userCredential => {
+               return db.collection('usuarios').doc(user.username).set(user);
+           })
+           .then(() => {
+               document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
+               setTimeout(() => showSection('manageUsers'), 1000);
+           })
+           .catch(error => {
+               document.getElementById('registerError').textContent = error.message;
+           });
+   }
 
-        // Initialize
-        showSection('login');
-    </script>
-</body>
-</html>
+   // Login com Firebase
+   function login() {
+       const username = document.getElementById('loginUsername').value.trim();
+       const password = document.getElementById('loginPassword').value;
+       firebase.auth().signInWithEmailAndPassword(`${username}@admz.app`, password)
+           .then(userCredential => {
+               return db.collection('usuarios').doc(username).get();
+           })
+           .then(doc => {
+               if (doc.exists) {
+                   currentUser = doc.data();
+                   document.getElementById('adminName').textContent = currentUser.fullName;
+                   document.getElementById('trackingUsername').textContent = currentUser.fullName;
+                   showSection(currentUser.isAdmin ? 'adminDashboard' : 'timeTracking');
+               } else {
+                   document.getElementById('loginError').textContent = 'Usuário não encontrado';
+               }
+           })
+           .catch(error => {
+               document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
+           });
+   }
+   ```
