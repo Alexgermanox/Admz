@@ -4,22 +4,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ponto Eletrônico</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-        .container { max-width: 800px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; }
-        .section { display: none; }
-        .section.active { display: block; }
-        h2 { color: #333; }
-        input, select, button { padding: 8px; margin: 5px 0; width: calc(100% - 16px); box-sizing: border-box; }
-        button { background: #007BFF; color: white; border: none; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .error { color: red; }
-        .success { color: green; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        h2 {
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        input, select, button {
+            padding: 8px;
+            margin: 5px 0;
+            width: calc(100% - 16px);
+            box-sizing: border-box;
+            font-size: 0.9em;
+        }
+        button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-right: 5px;
+            display: inline-block;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            overflow-x: auto;
+            display: block;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 0.85em;
+        }
+        th {
+            background: #f2f2f2;
+        }
+        .error {
+            color: red;
+            font-size: 0.8em;
+        }
+        .success {
+            color: green;
+            font-size: 0.8em;
+        }
+        .assinatura {
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
         @media (max-width: 600px) {
-            button { width: auto; display: inline-block; margin-right: 10px; }
-            .container { padding: 10px; }
+            .container {
+                margin: 10px;
+                padding: 10px;
+            }
+            button {
+                width: auto;
+                margin: 5px;
+            }
+            .button-group {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            table {
+                font-size: 0.8em;
+            }
         }
     </style>
 </head>
@@ -30,7 +104,9 @@
             <h2>Entrar</h2>
             <input type="text" id="loginUsername" placeholder="Nome de Usuário" required>
             <input type="password" id="loginPassword" placeholder="Senha" required>
-            <button onclick="login()">Entrar</button>
+            <div class="button-group">
+                <button onclick="login()">Entrar</button>
+            </div>
             <p class="error" id="loginError"></p>
         </div>
 
@@ -38,10 +114,12 @@
         <div id="adminDashboard" class="section">
             <h2>Painel do Administrador</h2>
             <p>Bem-vindo, <span id="adminName"></span></p>
-            <button onclick="showSection('timeTracking')">Bater Ponto</button>
-            <button onclick="showSection('manageUsers')">Gerenciar Usuários</button>
-            <button onclick="showSection('passages')">Passagens</button>
-            <button onclick="logout()">Sair</button>
+            <div class="button-group">
+                <button onclick="showSection('timeTracking')">Bater Ponto</button>
+                <button onclick="showSection('manageUsers')">Gerenciar Usuários</button>
+                <button onclick="showSection('passages')">Passagens</button>
+                <button onclick="logout()">Sair</button>
+            </div>
         </div>
 
         <!-- Register User -->
@@ -58,8 +136,10 @@
             <input type="text" id="regCTPS" placeholder="CTPS">
             <input type="password" id="regPassword" placeholder="Senha">
             <label><input type="checkbox" id="regIsAdmin"> Administrador</label>
-            <button onclick="registerUser()">Cadastrar</button>
-            <button onclick="showSection('manageUsers')">Voltar</button>
+            <div class="button-group">
+                <button onclick="registerUser()">Cadastrar</button>
+                <button onclick="showSection('manageUsers')">Voltar</button>
+            </div>
             <p class="success" id="registerSuccess"></p>
             <p class="error" id="registerError"></p>
         </div>
@@ -67,19 +147,25 @@
         <!-- Manage Users -->
         <div id="manageUsers" class="section">
             <h2>Gerenciar Usuários</h2>
-            <button onclick="showSection('registerUser')">Cadastrar Novo Usuário</button>
+            <div class="button-group">
+                <button onclick="showSection('registerUser')">Cadastrar Novo Usuário</button>
+            </div>
             <h3>Usuários</h3>
             <select id="userSelect" onchange="viewUserProfile()">
                 <option value="">Selecione um usuário</option>
             </select>
-            <button onclick="showSection('adminDashboard')">Voltar</button>
+            <div class="button-group">
+                <button onclick="showSection('adminDashboard')">Voltar</button>
+            </div>
         </div>
 
         <!-- User Profile -->
         <div id="userProfile" class="section">
             <h2>Perfil do Usuário</h2>
             <input type="file" id="profilePhoto" accept="image/*">
-            <button onclick="removePhoto()">Remover Foto</button>
+            <div class="button-group">
+                <button onclick="removePhoto()">Remover Foto</button>
+            </div>
             <input type="text" id="profileUsername" placeholder="Nome de Usuário">
             <input type="text" id="profileFullName" placeholder="Nome Completo">
             <input type="text" id="profileCPF" placeholder="CPF">
@@ -91,17 +177,21 @@
             <input type="text" id="profileCTPS" placeholder="CTPS">
             <input type="password" id="profilePassword" placeholder="Senha">
             <label><input type="checkbox" id="profileIsAdmin"> Administrador</label>
-            <button onclick="exportUserProfilePDF()">Exportar PDF</button>
-            <button onclick="saveUserProfile()">Salvar</button>
-            <button onclick="showDeleteUserConfirm()">Excluir Usuário</button>
-            <button onclick="showSection('manageUsers')">Voltar</button>
-            <button onclick="showSection('userRecords')">Ver Registros</button>
+            <div class="button-group">
+                <button onclick="exportUserProfilePDF()">Exportar PDF</button>
+                <button onclick="saveUserProfile()">Salvar</button>
+                <button onclick="showDeleteUserConfirm()">Excluir Usuário</button>
+                <button onclick="showSection('manageUsers')">Voltar</button>
+                <button onclick="showSection('userRecords')">Ver Registros</button>
+            </div>
         </div>
 
         <!-- User Records -->
         <div id="userRecords" class="section">
             <h2>Registros do Usuário</h2>
-            <button onclick="exportRecordsPDF()">Exportar PDF</button>
+            <div class="button-group">
+                <button onclick="exportRecordsPDF()">Exportar PDF</button>
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -118,7 +208,9 @@
             <h3>Relatório</h3>
             <p id="reportSummary"></p>
             <div class="assinatura">Assinatura do funcionário: ____________________</div>
-            <button onclick="showSection('userProfile')">Voltar</button>
+            <div class="button-group">
+                <button onclick="showSection('userProfile')">Voltar</button>
+            </div>
         </div>
 
         <!-- Edit Record -->
@@ -131,31 +223,39 @@
                 <option value="Retorno">Retorno</option>
                 <option value="Saída">Saída</option>
             </select>
-            <button onclick="cancelEditRecord()">Cancelar</button>
-            <button onclick="saveRecord()">Salvar</button>
+            <div class="button-group">
+                <button onclick="cancelEditRecord()">Cancelar</button>
+                <button onclick="saveRecord()">Salvar</button>
+            </div>
         </div>
 
         <!-- Delete Record Confirmation -->
         <div id="deleteRecordConfirm" class="section">
             <h2>Confirmação</h2>
             <p>Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.</p>
-            <button onclick="cancelDeleteRecord()">Cancelar</button>
-            <button onclick="deleteRecord()">Excluir</button>
+            <div class="button-group">
+                <button onclick="cancelDeleteRecord()">Cancelar</button>
+                <button onclick="deleteRecord()">Excluir</button>
+            </div>
         </div>
 
         <!-- Delete User Confirmation -->
         <div id="deleteUserConfirm" class="section">
             <h2>Confirmação</h2>
             <p>Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.</p>
-            <button onclick="showSection('userProfile')">Cancelar</button>
-            <button onclick="deleteUser()">Excluir</button>
+            <div class="button-group">
+                <button onclick="showSection('userProfile')">Cancelar</button>
+                <button onclick="deleteUser()">Excluir</button>
+            </div>
         </div>
 
         <!-- Passages -->
         <div id="passages" class="section">
             <h2>Passagens</h2>
             <p>Funcionalidade em desenvolvimento.</p>
-            <button onclick="showSection('adminDashboard')">Voltar</button>
+            <div class="button-group">
+                <button onclick="showSection('adminDashboard')">Voltar</button>
+            </div>
         </div>
 
         <!-- Time Tracking -->
@@ -163,15 +263,17 @@
             <h2>Bater Ponto</h2>
             <p>Usuário: <span id="trackingUsername"></span></p>
             <p>Horário atual: <span id="currentTime"></span></p>
-            <button onclick="recordTime('Entrada')">Entrada</button>
-            <button onclick="recordTime('Pausa')">Pausa</button>
-            <button onclick="recordTime('Retorno')">Retorno</button>
-            <button onclick="recordTime('Saída')">Saída</button>
-            <button onclick="showSection('adminDashboard')">Voltar ao Painel</button>
-            <button onclick="exportRecordsCSV()">Exportar CSV</button>
-            <button onclick="showClearRecordsConfirm()">Limpar Registros</button>
-            <button onclick="logout()">Sair</button>
-            <button onclick="showSection('myRecords')">Meus Registros</button>
+            <div class="button-group">
+                <button onclick="recordTime('Entrada')">Entrada</button>
+                <button onclick="recordTime('Pausa')">Pausa</button>
+                <button onclick="recordTime('Retorno')">Retorno</button>
+                <button onclick="recordTime('Saída')">Saída</button>
+                <button onclick="showSection('adminDashboard')">Voltar ao Painel</button>
+                <button onclick="exportRecordsCSV()">Exportar CSV</button>
+                <button onclick="showClearRecordsConfirm()">Limpar Registros</button>
+                <button onclick="logout()">Sair</button>
+                <button onclick="showSection('myRecords')">Meus Registros</button>
+            </div>
         </div>
 
         <!-- My Records -->
@@ -192,19 +294,29 @@
             <h3>Relatório</h3>
             <p id="myReportSummary"></p>
             <div class="assinatura">Assinatura do funcionário: ____________________</div>
-            <button onclick="showSection('timeTracking')">Voltar</button>
+            <div class="button-group">
+                <button onclick="showSection('timeTracking')">Voltar</button>
+            </div>
         </div>
 
         <!-- Clear Records Confirmation -->
         <div id="clearRecordsConfirm" class="section">
             <h2>Confirmação</h2>
             <p>Tem certeza que deseja limpar todos os registros? Esta ação não pode ser desfeita.</p>
-            <button onclick="showSection('timeTracking')">Cancelar</button>
-            <button onclick="clearRecords()">Limpar</button>
+            <div class="button-group">
+                <button onclick="showSection('timeTracking')">Cancelar</button>
+                <button onclick="clearRecords()">Limpar</button>
+            </div>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Firebase SDK (descomente e adicione suas credenciais para ativar) -->
+    <!--
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+    -->
     <script>
         const { jsPDF } = window.jspdf;
         let currentUser = null;
@@ -231,6 +343,20 @@
                 localStorage.setItem('users', JSON.stringify(users));
             }
         }
+
+        // Configuração do Firebase (descomente e preencha com suas credenciais)
+        /*
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            projectId: "SEU_PROJETO",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "SEU_SENDER_ID",
+            appId: "SEU_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        */
 
         // Mostrar seção
         function showSection(sectionId) {
@@ -262,6 +388,32 @@
                 document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
             }
         }
+
+        // Login com Firebase (descomente para usar)
+        /*
+        function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            firebase.auth().signInWithEmailAndPassword(`${username}@admz.app`, password)
+                .then(userCredential => {
+                    return db.collection('usuarios').doc(username).get();
+                })
+                .then(doc => {
+                    if (doc.exists) {
+                        currentUser = doc.data();
+                        document.getElementById('adminName').textContent = currentUser.fullName;
+                        document.getElementById('trackingUsername').textContent = currentUser.fullName;
+                        showSection(currentUser.isAdmin ? 'adminDashboard' : 'timeTracking');
+                    } else {
+                        document.getElementById('loginError').textContent = 'Usuário não encontrado';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
+                    console.error('Erro no login:', error);
+                });
+        }
+        */
 
         // Logout
         function logout() {
@@ -301,6 +453,42 @@
             document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
             setTimeout(() => showSection('manageUsers'), 1000);
         }
+
+        // Cadastrar usuário com Firebase (descomente para usar)
+        /*
+        function registerUser() {
+            const user = {
+                username: document.getElementById('regUsername').value.trim(),
+                fullName: document.getElementById('regFullName').value,
+                cpf: document.getElementById('regCPF').value,
+                birthDate: document.getElementById('regBirthDate').value,
+                address: document.getElementById('regAddress').value,
+                admissionDate: document.getElementById('regAdmissionDate').value,
+                position: document.getElementById('regPosition').value,
+                pis: document.getElementById('regPIS').value,
+                ctps: document.getElementById('regCTPS').value,
+                password: document.getElementById('regPassword').value,
+                isAdmin: document.getElementById('regIsAdmin').checked,
+                photo: null
+            };
+            if (!user.username || !user.fullName || !user.password) {
+                document.getElementById('registerError').textContent = 'Preencha os campos obrigatórios';
+                return;
+            }
+            firebase.auth().createUserWithEmailAndPassword(`${user.username}@admz.app`, user.password)
+                .then(userCredential => {
+                    return db.collection('usuarios').doc(user.username).set(user);
+                })
+                .then(() => {
+                    document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
+                    setTimeout(() => showSection('manageUsers'), 1000);
+                })
+                .catch(error => {
+                    document.getElementById('registerError').textContent = error.message;
+                    console.error('Erro no cadastro:', error);
+                });
+        }
+        */
 
         // Carregar lista de usuários
         function loadUsers() {
@@ -394,13 +582,13 @@
                 alert('Usuário não logado');
                 return;
             }
-            const records = JSON.parse(localStorage.getItem('records') || '[]');
             const date = new Date();
             const dayOfWeek = date.getDay();
             if (dayOfWeek === 0 || dayOfWeek === 6) {
                 alert('Não é possível registrar ponto em finais de semana');
                 return;
             }
+            const records = JSON.parse(localStorage.getItem('records') || '[]');
             records.push({
                 username: currentUser.username,
                 date: date.toISOString().split('T')[0],
@@ -422,9 +610,9 @@
             allDates.forEach(date => {
                 const dayOfWeek = new Date(date).getDay();
                 const row = document.createElement('tr');
-                if (dayOfWeek === 6) { // Sábado
+                if (dayOfWeek === 6) {
                     row.innerHTML = `<td>${date}</td><td colspan="4">Sábado = COMPENSADO</td><td></td>`;
-                } else if (dayOfWeek === 0) { // Domingo
+                } else if (dayOfWeek === 0) {
                     row.innerHTML = `<td>${date}</td><td colspan="4">Domingo = DSR</td><td></td>`;
                 } else {
                     row.innerHTML = `
@@ -479,7 +667,7 @@
             return grouped;
         }
 
-        // Obter todas as datas (exemplo: últimos 30 dias)
+        // Obter todas as datas (últimos 30 dias)
         function getAllDates() {
             const dates = [];
             const today = new Date();
@@ -502,121 +690,170 @@
                 }
                 return sum;
             }, 0);
-            document.getElementById(elementId).textContent = `Total de horas trabalhKits de ferramentas sugeridos para tornar seu sistema web funcional online:
+            document.getElementById(elementId).textContent = `Total de horas trabalhadas: ${totalHours.toFixed(2)} horas`;
+        }
 
-1. **Hospedagem Online**: Para hospedar o sistema online, você pode usar plataformas gratuitas como **GitHub Pages** ou **Netlify**. Aqui está como fazer isso:
+        // Editar registro
+        function editRecord(username, date, type) {
+            const records = JSON.parse(localStorage.getItem('records') || '[]');
+            const record = records.find(r => r.username === username && r.date === date && r.type === type);
+            if (record) {
+                editingRecord = record;
+                document.getElementById('editRecordDateTime').value = `${record.date}T${record.time}`;
+                document.getElementById('editRecordType').value = record.type;
+                showSection('editRecord');
+            }
+        }
 
-   - **GitHub Pages**:
-     1. Crie um repositório no GitHub.
-     2. Faça upload do arquivo `index.html` para o repositório.
-     3. Ative o GitHub Pages nas configurações do repositório, escolhendo a branch principal.
-     4. O site estará disponível em `https://<seu-usuario>.github.io/<nome-do-repositorio>`.
+        // Salvar registro
+        function saveRecord() {
+            const records = JSON.parse(localStorage.getItem('records') || '[]');
+            const index = records.findIndex(r => r === editingRecord);
+            if (index !== -1) {
+                const dateTime = document.getElementById('editRecordDateTime').value;
+                records[index] = {
+                    ...editingRecord,
+                    date: dateTime.split('T')[0],
+                    time: dateTime.split('T')[1],
+                    type: document.getElementById('editRecordType').value
+                };
+                localStorage.setItem('records', JSON.stringify(records));
+                alert('Registro atualizado com sucesso');
+                showSection('userRecords');
+            }
+        }
 
-   - **Netlify**:
-     1. Crie uma conta no Netlify.
-     2. Conecte seu repositório GitHub ou faça upload do arquivo `index.html`.
-     3. Configure o site e obtenha um link como `https://<seu-site>.netlify.app`.
+        // Cancelar edição de registro
+        function cancelEditRecord() {
+            showSection('userRecords');
+        }
 
-   Ambas as opções são gratuitas e fáceis de usar. O sistema funcionará online, mas os dados ainda serão armazenados no localStorage do navegador do usuário. Para persistência de dados entre dispositivos, você precisará de um backend (ex.: Firebase).
+        // Confirmação de exclusão de registro
+        function showDeleteRecordConfirm() {
+            showSection('deleteRecordConfirm');
+        }
 
-2. **Validações Adicionais**: Com base nas suas mensagens anteriores, você mencionou interesse em validações, como para CPF. Aqui está um exemplo de validação de CPF no cadastro:
+        // Excluir registro
+        function deleteRecord() {
+            const records = JSON.parse(localStorage.getItem('records') || '[]');
+            const index = records.findIndex(r => r === editingRecord);
+            if (index !== -1) {
+                records.splice(index, 1);
+                localStorage.setItem('records', JSON.stringify(records));
+                alert('Registro excluído com sucesso');
+                showSection('userRecords');
+            }
+        }
 
-   ```javascript
-   function validarCPF(cpf) {
-       cpf = cpf.replace(/[^\d]+/g, '');
-       if (cpf.length !== 11) return false;
-       let soma = 0;
-       for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
-       let resto = (soma * 10) % 11;
-       if (resto === 10 || resto === 11) resto = 0;
-       if (resto !== parseInt(cpf.charAt(9))) return false;
-       soma = 0;
-       for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
-       resto = (soma * 10) % 11;
-       if (resto === 10 || resto === 11) resto = 0;
-       return resto === parseInt(cpf.charAt(10));
-   }
+        // Cancelar exclusão de registro
+        function cancelDeleteRecord() {
+            showSection('userRecords');
+        }
 
-   // Adicionar na função registerUser
-   function registerUser() {
-       const cpf = document.getElementById('regCPF').value;
-       if (!validarCPF(cpf)) {
-           document.getElementById('registerError').textContent = 'CPF inválido';
-           return;
-       }
-       // Restante do código...
-   }
-   ```
+        // Confirmação de limpar registros
+        function showClearRecordsConfirm() {
+            showSection('clearRecordsConfirm');
+        }
 
-3. **Integração com Firebase**: Você mencionou anteriormente interesse em usar Firebase para salvar cadastros. Para isso, você precisa:
-   - Criar um projeto no Firebase (https://console.firebase.google.com).
-   - Obter as credenciais (API Key, Auth Domain, etc.).
-   - Adicionar o SDK do Firebase ao seu projeto:
+        // Limpar registros
+        function clearRecords() {
+            let records = JSON.parse(localStorage.getItem('records') || '[]');
+            records = records.filter(r => r.username !== currentUser.username);
+            localStorage.setItem('records', JSON.stringify(records));
+            alert('Registros limpos com sucesso');
+            showSection('timeTracking');
+        }
 
-   ```html
-   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-   ```
+        // Exportar registros em PDF
+        function exportRecordsPDF() {
+            const username = document.getElementById('userSelect').value;
+            const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === username);
+            const doc = new jsPDF();
+            doc.text(`Registros do Usuário: ${username}`, 10, 10);
+            let y = 20;
+            const groupedRecords = groupRecordsByDate(records);
+            const allDates = getAllDates();
+            allDates.forEach(date => {
+                const dayOfWeek = new Date(date).getDay();
+                if (dayOfWeek === 6) {
+                    doc.text(`${date}: Sábado = COMPENSADO`, 10, y);
+                } else if (dayOfWeek === 0) {
+                    doc.text(`${date}: Domingo = DSR`, 10, y);
+                } else {
+                    doc.text(`${date}: Entrada: ${groupedRecords[date]?.Entrada || ''}, Pausa: ${groupedRecords[date]?.Pausa || ''}, Retorno: ${groupedRecords[date]?.Retorno || ''}, Saída: ${groupedRecords[date]?.Saída || ''}`, 10, y);
+                }
+                y += 10;
+            });
+            doc.text(`Total de horas trabalhadas: ${records.reduce((sum, r) => {
+                if (r.type === 'Saída' && records.some(rec => rec.date === r.date && rec.type === 'Entrada')) {
+                    const entry = records.find(rec => rec.date === r.date && rec.type === 'Entrada');
+                    const exit = new Date(`${r.date} ${r.time}`);
+                    const start = new Date(`${r.date} ${entry.time}`);
+                    return sum + (exit - start) / (1000 * 60 * 60);
+                }
+                return sum;
+            }, 0).toFixed(2)} horas`, 10, y + 10);
+            doc.text('Assinatura do funcionário: ____________________', 10, y + 20);
+            doc.save(`registros_${username}.pdf`);
+        }
 
-   - Configurar o Firebase no JavaScript:
+        // Exportar perfil do usuário em PDF
+        function exportUserProfilePDF() {
+            const username = document.getElementById('profileUsername').value;
+            const doc = new jsPDF();
+            doc.text(`Perfil do Usuário: ${username}`, 10, 10);
+            doc.text(`Nome Completo: ${document.getElementById('profileFullName').value}`, 10, 20);
+            doc.text(`CPF: ${document.getElementById('profileCPF').value}`, 10, 30);
+            doc.text(`Data de Nascimento: ${document.getElementById('profileBirthDate').value}`, 10, 40);
+            doc.text(`Endereço: ${document.getElementById('profileAddress').value}`, 10, 50);
+            doc.text(`Data de Admissão: ${document.getElementById('profileAdmissionDate').value}`, 10, 60);
+            doc.text(`Cargo: ${document.getElementById('profilePosition').value}`, 10, 70);
+            doc.text(`PIS/PASEP: ${document.getElementById('profilePIS').value}`, 10, 80);
+            doc.text(`CTPS: ${document.getElementById('profileCTPS').value}`, 10, 90);
+            doc.text(`Administrador: ${document.getElementById('profileIsAdmin').checked ? 'Sim' : 'Não'}`, 10, 100);
+            doc.save(`perfil_${username}.pdf`);
+        }
 
-   ```javascript
-   const firebaseConfig = {
-       apiKey: "SUA_API_KEY",
-       authDomain: "SEU_PROJETO.firebaseapp.com",
-       projectId: "SEU_PROJETO",
-       // Outras configurações
-   };
-   firebase.initializeApp(firebaseConfig);
-   const db = firebase.firestore();
+        // Exportar registros em CSV
+        function exportRecordsCSV() {
+            const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === currentUser.username);
+            const groupedRecords = groupRecordsByDate(records);
+            const allDates = getAllDates();
+            let csv = 'Dia,Entrada,Pausa,Retorno,Saída\n';
+            allDates.forEach(date => {
+                const dayOfWeek = new Date(date).getDay();
+                if (dayOfWeek === 6) {
+                    csv += `${date},,,,"Sábado = COMPENSADO"\n`;
+                } else if (dayOfWeek === 0) {
+                    csv += `${date},,,,"Domingo = DSR"\n`;
+                } else {
+                    csv += `${date},${groupedRecords[date]?.Entrada || ''},${groupedRecords[date]?.Pausa || ''},${groupedRecords[date]?.Retorno || ''},${groupedRecords[date]?.Saída || ''}\n`;
+                }
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `registros_${currentUser.username}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
 
-   // Exemplo: salvar usuário no Firestore
-   function registerUser() {
-       const user = {
-           username: document.getElementById('regUsername').value.trim(),
-           fullName: document.getElementById('regFullName').value,
-           // Outros campos
-           email: `${document.getElementById('regUsername').value}@admz.app`, // Email fake
-           password: document.getElementById('regPassword').value
-       };
-       if (!validarCPF(document.getElementById('regCPF').value)) {
-           document.getElementById('registerError').textContent = 'CPF inválido';
-           return;
-       }
-       firebase.auth().createUserWithEmailAndPassword(user.email, user.password)
-           .then(userCredential => {
-               return db.collection('usuarios').doc(user.username).set(user);
-           })
-           .then(() => {
-               document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
-               setTimeout(() => showSection('manageUsers'), 1000);
-           })
-           .catch(error => {
-               document.getElementById('registerError').textContent = error.message;
-           });
-   }
+        // Remover foto
+        function removePhoto() {
+            const username = document.getElementById('profileUsername').value;
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const index = users.findIndex(u => u.username === username);
+            if (index !== -1) {
+                users[index].photo = null;
+                localStorage.setItem('users', JSON.stringify(users));
+                alert('Foto removida com sucesso');
+            }
+        }
 
-   // Login com Firebase
-   function login() {
-       const username = document.getElementById('loginUsername').value.trim();
-       const password = document.getElementById('loginPassword').value;
-       firebase.auth().signInWithEmailAndPassword(`${username}@admz.app`, password)
-           .then(userCredential => {
-               return db.collection('usuarios').doc(username).get();
-           })
-           .then(doc => {
-               if (doc.exists) {
-                   currentUser = doc.data();
-                   document.getElementById('adminName').textContent = currentUser.fullName;
-                   document.getElementById('trackingUsername').textContent = currentUser.fullName;
-                   showSection(currentUser.isAdmin ? 'adminDashboard' : 'timeTracking');
-               } else {
-                   document.getElementById('loginError').textContent = 'Usuário não encontrado';
-               }
-           })
-           .catch(error => {
-               document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
-           });
-   }
-   ```
+        // Inicializar
+        initializeAdmin();
+        showSection('login');
+    </script>
+</body>
+</html>
