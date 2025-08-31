@@ -1527,15 +1527,13 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
         document.body.appendChild(script);
     });
     </script>
-  <script>
-  // Importando Firebase
+  <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import { 
     getAuth, 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword 
   } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-
   import { 
     getFirestore, 
     collection, 
@@ -1545,7 +1543,6 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     deleteDoc 
   } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-  // Configuração do Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyCwHEYAAWzuArnjHKyBB2HQornlGXgXcwc",
     authDomain: "admz-4cc94.firebaseapp.com",
@@ -1556,20 +1553,19 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     measurementId: "G-WFJ4D9JFGC"
   };
 
-  // Inicializa Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // Criar conta no Firebase + salvar no Firestore
+  // Função para criar conta no Firebase + salvar no Firestore
   async function registrarNoFirebase(usuario, senha) {
-    const emailFake = `${usuario}@admz.app`;
+    const email = usuario.includes('@') ? usuario : `${usuario}@admz.app`;
     try {
-      await createUserWithEmailAndPassword(auth, emailFake, senha);
+      await createUserWithEmailAndPassword(auth, email, senha);
 
-      // Salvar dados no Firestore
       await setDoc(doc(db, "usuarios", usuario), {
         nome: usuario,
+        email: email,
         senha: senha,
         criadoEm: new Date().toISOString()
       });
@@ -1586,11 +1582,11 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     }
   }
 
-  // Login no Firebase (somente autenticação)
+  // Função para login no Firebase
   async function loginNoFirebase(usuario, senha) {
-    const emailFake = `${usuario}@admz.app`;
+    const email = usuario.includes('@') ? usuario : `${usuario}@admz.app`;
     try {
-      await signInWithEmailAndPassword(auth, emailFake, senha);
+      await signInWithEmailAndPassword(auth, email, senha);
       console.log("Login no Firebase bem-sucedido:", usuario);
       return true;
     } catch (error) {
@@ -1608,7 +1604,7 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
         usuarios.push(doc.data());
       });
       console.log("Usuários carregados do Firestore:", usuarios);
-      return usuarios; // Agora retorna lista ao invés de salvar em localStorage
+      return usuarios;
     } catch (error) {
       console.error("Erro ao carregar usuários do Firestore:", error);
       return [];
@@ -1627,11 +1623,11 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     }
   }
 
-  // Tornar funções globais
   window.registrarNoFirebase = registrarNoFirebase;
   window.loginNoFirebase = loginNoFirebase;
   window.carregarUsuariosFirebase = carregarUsuariosFirebase;
   window.excluirUsuarioFirebase = excluirUsuarioFirebase;
-  </script>
+</script>
+
   </body>
   </html>
