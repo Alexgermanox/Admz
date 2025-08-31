@@ -1526,23 +1526,28 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
         script.crossOrigin = 'anonymous';
         document.body.appendChild(script);
     });
-    </script>
-  <script type="module">
+    <script type="module">
+  // Firebase SDKs
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-  import { 
-    getAuth, 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword 
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    setPersistence,
+    browserLocalPersistence,
+    onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-  import { 
-    getFirestore, 
-    collection, 
-    getDocs, 
-    doc, 
-    setDoc, 
-    deleteDoc 
+
+  import {
+    getFirestore,
+    collection,
+    getDocs,
+    doc,
+    setDoc,
+    deleteDoc
   } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+  // Config
   const firebaseConfig = {
     apiKey: "AIzaSyCwHEYAAWzuArnjHKyBB2HQornlGXgXcwc",
     authDomain: "admz-4cc94.firebaseapp.com",
@@ -1553,81 +1558,119 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     measurementId: "G-WFJ4D9JFGC"
   };
 
+  // Init
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // Função para criar conta no Firebase + salvar no Firestore
-  async function registrarNoFirebase(usuario, senha) {
-    const email = usuario.includes('@') ? usuario : `${usuario}@admz.app`;
+  // Persistência no navegador (mantém login entre abas/dispositivos)
+  await setPersistence(auth, browserLocalPersistence);
+
+  // Util: normaliza entrada do usuário -> email e id de documento
+  function montarEmail(usuarioOuEmail) {
+    return usuarioOuEmail.includes("@")
+      ? usuarioOuEmail.trim().toLowerCase()
+      : `${usuarioOuEmail.trim().toLowerCase()}@admz.app`;
+  }
+  function docIdFromUsuario(usuarioOuEmail) {
+    // usa a parte antes do @ como id do doc
+    const email = montarEmail(usuarioOuEmail);
+    return email.split("@")[0];
+  }
+
+  // REGISTRO (Auth + Firestore)
+  async function registrarNoFirebase(usuarioOuEmail, senha) {
+    const email = montarEmail(usuarioOuEmail);
+    const docId = docIdFromUsuario(usuarioOuEmail);
     try {
       await createUserWithEmailAndPassword(auth, email, senha);
 
-      await setDoc(doc(db, "usuarios", usuario), {
-        nome: usuario,
-        email: email,
-        senha: senha,
+      // NUNCA salve a senha no Firestore
+      await setDoc(doc(db, "usuarios", docId), {
+        nome: docId,
+        email,
         criadoEm: new Date().toISOString()
-      });
+      }, { merge: true });
 
-      console.log("Usuário registrado no Firebase e Firestore:", usuario);
+      console.log("[OK] Registro feito (Auth + Firestore):", email);
       return true;
     } catch (error) {
+      console.error("[ERRO registro]", error.code, error.message);
       if (error.code === "auth/email-already-in-use") {
-        console.warn("Usuário já existe no Firebase.");
+        // Se o usuário já existe no Auth, garanta que o doc exista no Firestore
+        await setDoc(doc(db, "usuarios", docId), {
+          nome: docId,
+          email,
+          atualizadoEm: new Date().toISOString()
+        }, { merge: true });
+        console.warn("[WARN] Email já existia. Sincronizei Firestore e segui em frente.");
         return true;
       }
-      console.error("Erro ao registrar no Firebase:", error);
+      alert("Falha no registro: " + error.code);
       return false;
     }
   }
 
-  // Função para login no Firebase
-  async function loginNoFirebase(usuario, senha) {
-    const email = usuario.includes('@') ? usuario : `${usuario}@admz.app`;
+  // LOGIN (Auth) — aceita "admin" ou "admin@admz.app"
+  async function loginNoFirebase(usuarioOuEmail, senha) {
+    const email = montarEmail(usuarioOuEmail);
     try {
       await signInWithEmailAndPassword(auth, email, senha);
-      console.log("Login no Firebase bem-sucedido:", usuario);
+      console.log("[OK] Login bem-sucedido:", email);
       return true;
     } catch (error) {
-      console.error("Erro no login Firebase:", error);
+      console.error("[ERRO login]", error.code, error.message);
+      alert("Falha no login: " + error.code);
       return false;
     }
   }
 
-  // Carregar lista de usuários direto do Firestore
+  // LISTA USUÁRIOS (somente depois de logado)
   async function carregarUsuariosFirebase() {
     try {
-      const querySnapshot = await getDocs(collection(db, "usuarios"));
-      const usuarios = [];
-      querySnapshot.forEach((doc) => {
-        usuarios.push(doc.data());
-      });
-      console.log("Usuários carregados do Firestore:", usuarios);
+      const snap = await getDocs(collection(db, "usuarios"));
+      const usuarios = snap.docs.map(d => d.data());
+      console.log("[OK] Usuários do Firestore:", usuarios);
       return usuarios;
     } catch (error) {
-      console.error("Erro ao carregar usuários do Firestore:", error);
+      console.error("[ERRO carregar usuários]", error.code, error.message);
+      alert("Erro ao carregar usuários: " + error.code);
       return [];
     }
   }
 
-  // Excluir usuário do Firestore
-  async function excluirUsuarioFirebase(nome) {
+  // EXCLUIR USUÁRIO (apenas do Firestore)
+  async function excluirUsuarioFirebase(nomeOuEmail) {
+    const docId = docIdFromUsuario(nomeOuEmail);
     try {
-      await deleteDoc(doc(db, "usuarios", nome));
-      console.log(`Usuário ${nome} removido do Firestore`);
+      await deleteDoc(doc(db, "usuarios", docId));
+      console.log(`[OK] Usuário removido do Firestore: ${docId}`);
       return true;
     } catch (error) {
-      console.error("Erro ao excluir usuário do Firebase:", error);
+      console.error("[ERRO excluir usuário]", error.code, error.message);
+      alert("Erro ao excluir: " + error.code);
       return false;
     }
   }
 
+  // Só carrega dados depois que o Auth disser que está logado
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      console.log("[AUTH] Logado como:", user.email);
+      // Exemplo: carregar lista assim que logar
+      try { await carregarUsuariosFirebase(); } catch {}
+    } else {
+      console.log("[AUTH] Não logado");
+    }
+  });
+
+  // Expor globais
   window.registrarNoFirebase = registrarNoFirebase;
   window.loginNoFirebase = loginNoFirebase;
   window.carregarUsuariosFirebase = carregarUsuariosFirebase;
   window.excluirUsuarioFirebase = excluirUsuarioFirebase;
 </script>
+
 
   </body>
   </html>
