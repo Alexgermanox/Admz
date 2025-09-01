@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -1528,92 +1528,60 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     });
     </script>
     
-    <!-- Firebase SDK -->
-<script type="module">
-  // Importando Firebase
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        <!-- Firebase App (obrigatório) -->
+    <script type="module">
+        // Import Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-  // Configuração do Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyCwHEYAAWzuArnjHKyBB2HQornlGXgXcwc",
-    authDomain: "admz-4cc94.firebaseapp.com",
-    projectId: "admz-4cc94",
-    storageBucket: "admz-4cc94.firebasestorage.app",
-    messagingSenderId: "1058002382869",
-    appId: "1:1058002382869:web:01e295c26aab0c662b1e1c",
-    measurementId: "G-WFJ4D9JFGC"
-  };
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCwHEYAAWzuArnjHKyBB2HQornlGXgXcwc",
+            authDomain: "admz-4cc94.firebaseapp.com",
+            projectId: "admz-4cc94",
+            storageBucket: "admz-4cc94.firebasestorage.app",
+            messagingSenderId: "1058002382869",
+            appId: "1:1058002382869:web:01e295c26aab0c662b1e1c",
+            measurementId: "G-WFJ4D9JFGC"
+        };
 
-  // Inicializa Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
 
-  // Função para criar conta no Firebase (usando usuário + senha)
-  async function registrarNoFirebase(usuario, senha) {
-    const emailFake = `${usuario}@admz.app`; // Cria email fictício
-    try {
-      await createUserWithEmailAndPassword(auth, emailFake, senha);
-      console.log("Usuário registrado no Firebase:", usuario);
-      return true;
-    } catch (error) {
-      if (error.code === "auth/email-already-in-use") {
-        console.warn("Usuário já existe no Firebase.");
-        return true; // Continua fluxo local
-      }
-      console.error("Erro ao registrar no Firebase:", error);
-      return false;
-    }
-  }
+        // Função de cadastro sem alterar nada do seu layout
+        async function cadastrarUsuario(email, senha) {
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+                alert("Usuário cadastrado com sucesso: " + userCredential.user.email);
+            } catch (error) {
+                alert("Erro ao cadastrar: " + error.message);
+            }
+        }
 
-  // Função para login no Firebase
-  async function loginNoFirebase(usuario, senha) {
-    const emailFake = `${usuario}@admz.app`;
-    try {
-      await signInWithEmailAndPassword(auth, emailFake, senha);
-      console.log("Login no Firebase bem-sucedido:", usuario);
-      return true;
-    } catch (error) {
-      console.error("Erro no login Firebase:", error);
-      return false;
-    }
-  }
+        // Função de login sem alterar nada do seu layout
+        async function loginUsuario(email, senha) {
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+                alert("Login realizado com sucesso: " + userCredential.user.email);
+            } catch (error) {
+                alert("Erro ao logar: " + error.message);
+            }
+        }
 
-  // Tornando funções globais para uso no seu código
-  window.registrarNoFirebase = registrarNoFirebase;
-  window.loginNoFirebase = loginNoFirebase;
-import { getFirestore, collection, getDocs, doc, deleteDoc } 
-  from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        // Exemplo de uso com botão existente
+        document.getElementById("btnCadastrar").addEventListener("click", () => {
+            const email = prompt("Digite o email do usuário:");
+            const senha = prompt("Digite a senha:");
+            cadastrarUsuario(email, senha);
+        });
+    </script>
 
-const db = getFirestore(app);
-
-async function carregarUsuariosFirebase() {
-  try {
-    const querySnapshot = await getDocs(collection(db, "usuarios"));
-    const usuarios = [];
-    querySnapshot.forEach((doc) => {
-      usuarios.push(doc.data());
-    });
-    localStorage.setItem('usuarios', JSON.stringify(usuarios)); 
-    console.log("Usuários carregados do Firebase:", usuarios);
-  } catch (error) {
-    console.error("Erro ao carregar usuários do Firebase:", error);
-  }
-}
-
-async function excluirUsuarioFirebase(nome) {
-  try {
-    await deleteDoc(doc(db, "usuarios", nome));
-    console.log(`Usuário ${nome} removido do Firestore`);
-    return true;
-  } catch (error) {
-    console.error("Erro ao excluir usuário do Firebase:", error);
-    return false;
-  }
-}
-
-window.carregarUsuariosFirebase = carregarUsuariosFirebase;
-window.excluirUsuarioFirebase = excluirUsuarioFirebase;
+    <!-- Bootstrap JS, se estiver usando -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+FF
 </script>
 </body>
 </html>
