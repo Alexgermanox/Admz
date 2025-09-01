@@ -336,31 +336,58 @@
         const auth = firebase.auth();
         const storage = firebase.storage();
 
+        // Validação de CPF
+        function validarCPF(cpf) {
+            cpf = cpf.replace(/[^\d]+/g, '');
+            if (cpf.length !== 11) return false;
+            let soma = 0;
+            for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
+            let resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.charAt(9))) return false;
+            soma = 0;
+            for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            return resto === parseInt(cpf.charAt(10));
+        }
+
         // Inicializar administrador padrão
         async function initializeAdmin() {
-            const adminRef = db.collection('usuarios').doc('admin');
-            const adminDoc = await adminRef.get();
-            if (!adminDoc.exists) {
-                try {
-                    const userCredential = await auth.createUserWithEmailAndPassword('admin@admz.app', 'admin123');
-                    await adminRef.set({
-                        username: 'admin',
-                        fullName: 'Administrador',
-                        cpf: '',
-                        birthDate: '',
-                        address: '',
-                        admissionDate: '',
-                        position: 'Administrador',
-                        pis: '',
-                        ctps: '',
-                        password: 'admin123',
-                        isAdmin: true,
-                        photo: null
-                    });
-                    console.log('Administrador criado com sucesso');
-                } catch (error) {
-                    console.error('Erro ao criar administrador:', error);
+            try {
+                const adminRef = db.collection('usuarios').doc('admin');
+                const adminDoc = await adminRef.get();
+                if (!adminDoc.exists) {
+                    console.log('Criando usuário admin...');
+                    try {
+                        await auth.createUserWithEmailAndPassword('admin@admz.app', 'admin123');
+                        await adminRef.set({
+                            username: 'admin',
+                            fullName: 'Administrador',
+                            cpf: '',
+                            birthDate: '',
+                            address: '',
+                            admissionDate: '',
+                            position: 'Administrador',
+                            pis: '',
+                            ctps: '',
+                            password: 'admin123',
+                            isAdmin: true,
+                            photo: null
+                        });
+                        console.log('Administrador criado com sucesso');
+                    } catch (error) {
+                        if (error.code === 'auth/email-already-in-use') {
+                            console.log('Usuário admin já existe no Authentication');
+                        } else {
+                            console.error('Erro ao criar administrador:', error);
+                        }
+                    }
+                } else {
+                    console.log('Usuário admin já existe no Firestore');
                 }
+            } catch (error) {
+                console.error('Erro ao verificar administrador:', error);
             }
         }
 
@@ -384,19 +411,22 @@
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
             try {
+                console.log('Tentando login com:', `${username}@admz.app`);
                 const userCredential = await auth.signInWithEmailAndPassword(`${username}@admz.app`, password);
                 const userDoc = await db.collection('usuarios').doc(username).get();
                 if (userDoc.exists) {
                     currentUser = userDoc.data();
                     document.getElementById('adminName').textContent = currentUser.fullName;
                     document.getElementById('trackingUsername').textContent = currentUser.fullName;
+                    console.log('Login bem-sucedido, usuário:', currentUser);
                     showSection(currentUser.isAdmin ? 'adminDashboard' : 'timeTracking');
                 } else {
-                    document.getElementById('loginError').textContent = 'Usuário não encontrado';
+                    document.getElementById('loginError').textContent = 'Usuário não encontrado no Firestore';
+                    console.error('Usuário não encontrado no Firestore');
                 }
             } catch (error) {
                 document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
-                console.error('Erro no login:', error);
+                console.error('Erro no login:', error.code, error.message);
             }
         }
 
@@ -408,6 +438,7 @@
                 showSection('login');
                 document.getElementById('loginUsername').value = '';
                 document.getElementById('loginPassword').value = '';
+                console.log('Logout bem-sucedido');
             } catch (error) {
                 console.error('Erro ao fazer logout:', error);
             }
@@ -433,6 +464,10 @@
                 document.getElementById('registerError').textContent = 'Preencha os campos obrigatórios';
                 return;
             }
+            if (user.cpf && !validarCPF(user.cpf)) {
+                document.getElementById('registerError').textContent = 'CPF inválido';
+                return;
+            }
             try {
                 const userDoc = await db.collection('usuarios').doc(user.username).get();
                 if (userDoc.exists) {
@@ -442,6 +477,7 @@
                 await auth.createUserWithEmailAndPassword(`${user.username}@admz.app`, user.password);
                 await db.collection('usuarios').doc(user.username).set(user);
                 document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
+                console.log('Usuário cadastrado:', user.username);
                 setTimeout(() => showSection('manageUsers'), 1000);
             } catch (error) {
                 document.getElementById('registerError').textContent = error.message;
@@ -462,6 +498,7 @@
                     option.textContent = user.fullName;
                     select.appendChild(option);
                 });
+                console.log('Usuários carregados com sucesso');
             } catch (error) {
                 console.error('Erro ao carregar usuários:', error);
             }
@@ -487,6 +524,7 @@
                     document.getElementById('profilePassword').value = user.password;
                     document.getElementById('profileIsAdmin').checked = user.isAdmin;
                     showSection('userProfile');
+                    console.log('Perfil carregado:', username);
                 }
             } catch (error) {
                 console.error('Erro ao carregar perfil:', error);
@@ -496,10 +534,15 @@
         // Salvar perfil do usuário
         async function saveUserProfile() {
             const username = document.getElementById('profileUsername').value;
+            const cpf = document.getElementById('profileCPF').value;
+            if (cpf && !validarCPF(cpf)) {
+                alert('CPF inválido');
+                return;
+            }
             try {
                 await db.collection('usuarios').doc(username).update({
                     fullName: document.getElementById('profileFullName').value,
-                    cpf: document.getElementById('profileCPF').value,
+                    cpf: cpf,
                     birthDate: document.getElementById('profileBirthDate').value,
                     address: document.getElementById('profileAddress').value,
                     admissionDate: document.getElementById('profileAdmissionDate').value,
@@ -510,6 +553,7 @@
                     isAdmin: document.getElementById('profileIsAdmin').checked
                 });
                 alert('Perfil atualizado com sucesso');
+                console.log('Perfil atualizado:', username);
                 showSection('manageUsers');
             } catch (error) {
                 console.error('Erro ao salvar perfil:', error);
@@ -531,6 +575,7 @@
                 records.forEach(doc => batch.delete(doc.ref));
                 await batch.commit();
                 alert('Usuário excluído com sucesso');
+                console.log('Usuário excluído:', username);
                 showSection('manageUsers');
             } catch (error) {
                 console.error('Erro ao excluir usuário:', error);
@@ -564,6 +609,7 @@
                     type
                 });
                 alert(`${type} registrada com sucesso`);
+                console.log('Ponto registrado:', type);
             } catch (error) {
                 console.error('Erro ao registrar ponto:', error);
             }
@@ -599,6 +645,7 @@
                     table.appendChild(row);
                 });
                 updateReportSummary(records, 'reportSummary');
+                console.log('Registros do usuário carregados:', username);
             } catch (error) {
                 console.error('Erro ao carregar registros:', error);
             }
@@ -632,6 +679,7 @@
                     table.appendChild(row);
                 });
                 updateReportSummary(records, 'myReportSummary');
+                console.log('Meus registros carregados');
             } catch (error) {
                 console.error('Erro ao carregar meus registros:', error);
             }
@@ -682,6 +730,7 @@
                     document.getElementById('editRecordDateTime').value = `${editingRecord.date}T${editingRecord.time}`;
                     document.getElementById('editRecordType').value = editingRecord.type;
                     showSection('editRecord');
+                    console.log('Editando registro:', editingRecord);
                 }
             } catch (error) {
                 console.error('Erro ao editar registro:', error);
@@ -698,6 +747,7 @@
                     type: document.getElementById('editRecordType').value
                 });
                 alert('Registro atualizado com sucesso');
+                console.log('Registro atualizado:', editingRecord.id);
                 showSection('userRecords');
             } catch (error) {
                 console.error('Erro ao salvar registro:', error);
@@ -719,6 +769,7 @@
             try {
                 await db.collection('registros').doc(editingRecord.id).delete();
                 alert('Registro excluído com sucesso');
+                console.log('Registro excluído:', editingRecord.id);
                 showSection('userRecords');
             } catch (error) {
                 console.error('Erro ao excluir registro:', error);
@@ -743,6 +794,7 @@
                 snapshot.forEach(doc => batch.delete(doc.ref));
                 await batch.commit();
                 alert('Registros limpos com sucesso');
+                console.log('Registros limpos para:', currentUser.username);
                 showSection('timeTracking');
             } catch (error) {
                 console.error('Erro ao limpar registros:', error);
@@ -782,6 +834,7 @@
                 }, 0).toFixed(2)} horas`, 10, y + 10);
                 doc.text('Assinatura do funcionário: ____________________', 10, y + 20);
                 doc.save(`registros_${username}.pdf`);
+                console.log('PDF exportado:', username);
             } catch (error) {
                 console.error('Erro ao exportar PDF:', error);
             }
@@ -802,6 +855,7 @@
             doc.text(`CTPS: ${document.getElementById('profileCTPS').value}`, 10, 90);
             doc.text(`Administrador: ${document.getElementById('profileIsAdmin').checked ? 'Sim' : 'Não'}`, 10, 100);
             doc.save(`perfil_${username}.pdf`);
+            console.log('Perfil exportado em PDF:', username);
         }
 
         // Exportar registros em CSV
@@ -829,6 +883,7 @@
                 a.download = `registros_${currentUser.username}.csv`;
                 a.click();
                 URL.revokeObjectURL(url);
+                console.log('CSV exportado:', currentUser.username);
             } catch (error) {
                 console.error('Erro ao exportar CSV:', error);
             }
@@ -840,6 +895,7 @@
             try {
                 await db.collection('usuarios').doc(username).update({ photo: null });
                 alert('Foto removida com sucesso');
+                console.log('Foto removida:', username);
             } catch (error) {
                 console.error('Erro ao remover foto:', error);
             }
