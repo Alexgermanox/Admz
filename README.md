@@ -334,20 +334,22 @@
         };
 
         // Verificar se os scripts do Firebase estão carregados com retry
-        function checkFirebaseScripts(attempt = 1, maxAttempts = 3) {
+        function checkFirebaseScripts(attempt = 1, maxAttempts = 5) {
             return new Promise((resolve, reject) => {
+                console.log('Verificando Firebase SDK, tentativa', attempt);
                 if (typeof firebase !== 'undefined') {
-                    console.log('Firebase SDK carregado');
+                    console.log('Firebase SDK carregado com sucesso');
                     resolve(true);
                     return;
                 }
                 if (attempt >= maxAttempts) {
-                    console.error('Erro: Firebase SDK não carregado após', maxAttempts, 'tentativas');
-                    document.getElementById('loginError').textContent = 'Erro: Não foi possível carregar o Firebase SDK. Verifique sua conexão e tente novamente.';
+                    const errorMsg = `Erro: Firebase SDK não carregado após ${maxAttempts} tentativas. Verifique sua conexão ou se está executando localmente (use um servidor).`;
+                    console.error(errorMsg);
+                    document.getElementById('loginError').textContent = errorMsg;
                     reject(new Error('Firebase SDK não carregado'));
                     return;
                 }
-                console.log('Firebase SDK não carregado, tentando novamente... (Tentativa', attempt, ')');
+                console.log('Firebase SDK não carregado, tentando novamente em 1s... (Tentativa', attempt, ')');
                 setTimeout(() => {
                     checkFirebaseScripts(attempt + 1, maxAttempts).then(resolve).catch(reject);
                 }, 1000);
@@ -358,6 +360,7 @@
         function initializeFirebase() {
             return new Promise((resolve, reject) => {
                 try {
+                    console.log('Inicializando Firebase...');
                     firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
                     auth = firebase.auth();
@@ -365,7 +368,7 @@
                     console.log('Firebase inicializado com sucesso');
                     resolve();
                 } catch (error) {
-                    console.error('Erro ao inicializar Firebase:', error);
+                    console.error('Erro ao inicializar Firebase:', error.message);
                     document.getElementById('loginError').textContent = `Erro ao inicializar Firebase: ${error.message}`;
                     reject(error);
                 }
@@ -1079,13 +1082,14 @@
                 showSection('login');
                 console.log('Aplicativo inicializado com sucesso');
             } catch (error) {
-                console.error('Erro ao inicializar aplicativo:', error);
+                console.error('Erro ao inicializar aplicativo:', error.message);
                 document.getElementById('loginError').textContent = `Erro ao inicializar aplicativo: ${error.message}`;
             }
         }
 
         // Iniciar aplicativo após o carregamento dos scripts
         window.onload = function() {
+            console.log('Iniciando carregamento do aplicativo...');
             initApp();
         };
     </script>
