@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -310,53 +311,58 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Firebase SDK (descomente e adicione suas credenciais para ativar) -->
-    <!--
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-    -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         const { jsPDF } = window.jspdf;
         let currentUser = null;
         let editingRecord = null;
 
-        // Inicializar administrador padrão
-        function initializeAdmin() {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            if (!users.some(u => u.username === 'admin')) {
-                users.push({
-                    username: 'admin',
-                    fullName: 'Administrador',
-                    cpf: '',
-                    birthDate: '',
-                    address: '',
-                    admissionDate: '',
-                    position: 'Administrador',
-                    pis: '',
-                    ctps: '',
-                    password: 'admin123',
-                    isAdmin: true,
-                    photo: null
-                });
-                localStorage.setItem('users', JSON.stringify(users));
-            }
-        }
-
-        // Configuração do Firebase (descomente e preencha com suas credenciais)
-        /*
+        // Configuração do Firebase
         const firebaseConfig = {
-            apiKey: "SUA_API_KEY",
-            authDomain: "SEU_PROJETO.firebaseapp.com",
-            projectId: "SEU_PROJETO",
-            storageBucket: "SEU_PROJETO.appspot.com",
-            messagingSenderId: "SEU_SENDER_ID",
-            appId: "SEU_APP_ID"
+            apiKey: "AIzaSyCwHEYAAWzuArnjHKyBB2HQornlGXgXcwc",
+            authDomain: "admz-4cc94.firebaseapp.com",
+            projectId: "admz-4cc94",
+            storageBucket: "admz-4cc94.firebasestorage.app",
+            messagingSenderId: "1058002382869",
+            appId: "1:1058002382869:web:01e295c26aab0c662b1e1c",
+            measurementId: "G-WFJ4D9JFGC"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        */
+        const auth = firebase.auth();
+        const storage = firebase.storage();
+
+        // Inicializar administrador padrão
+        async function initializeAdmin() {
+            const adminRef = db.collection('usuarios').doc('admin');
+            const adminDoc = await adminRef.get();
+            if (!adminDoc.exists) {
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword('admin@admz.app', 'admin123');
+                    await adminRef.set({
+                        username: 'admin',
+                        fullName: 'Administrador',
+                        cpf: '',
+                        birthDate: '',
+                        address: '',
+                        admissionDate: '',
+                        position: 'Administrador',
+                        pis: '',
+                        ctps: '',
+                        password: 'admin123',
+                        isAdmin: true,
+                        photo: null
+                    });
+                    console.log('Administrador criado com sucesso');
+                } catch (error) {
+                    console.error('Erro ao criar administrador:', error);
+                }
+            }
+        }
 
         // Mostrar seção
         function showSection(sectionId) {
@@ -374,57 +380,41 @@
         }
 
         // Login
-        function login() {
+        async function login() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const user = users.find(u => u.username === username && u.password === password);
-            if (user) {
-                currentUser = user;
-                document.getElementById('adminName').textContent = user.fullName;
-                document.getElementById('trackingUsername').textContent = user.fullName;
-                showSection(user.isAdmin ? 'adminDashboard' : 'timeTracking');
-            } else {
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(`${username}@admz.app`, password);
+                const userDoc = await db.collection('usuarios').doc(username).get();
+                if (userDoc.exists) {
+                    currentUser = userDoc.data();
+                    document.getElementById('adminName').textContent = currentUser.fullName;
+                    document.getElementById('trackingUsername').textContent = currentUser.fullName;
+                    showSection(currentUser.isAdmin ? 'adminDashboard' : 'timeTracking');
+                } else {
+                    document.getElementById('loginError').textContent = 'Usuário não encontrado';
+                }
+            } catch (error) {
                 document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
+                console.error('Erro no login:', error);
             }
         }
 
-        // Login com Firebase (descomente para usar)
-        /*
-        function login() {
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            firebase.auth().signInWithEmailAndPassword(`${username}@admz.app`, password)
-                .then(userCredential => {
-                    return db.collection('usuarios').doc(username).get();
-                })
-                .then(doc => {
-                    if (doc.exists) {
-                        currentUser = doc.data();
-                        document.getElementById('adminName').textContent = currentUser.fullName;
-                        document.getElementById('trackingUsername').textContent = currentUser.fullName;
-                        showSection(currentUser.isAdmin ? 'adminDashboard' : 'timeTracking');
-                    } else {
-                        document.getElementById('loginError').textContent = 'Usuário não encontrado';
-                    }
-                })
-                .catch(error => {
-                    document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
-                    console.error('Erro no login:', error);
-                });
-        }
-        */
-
         // Logout
-        function logout() {
-            currentUser = null;
-            showSection('login');
-            document.getElementById('loginUsername').value = '';
-            document.getElementById('loginPassword').value = '';
+        async function logout() {
+            try {
+                await auth.signOut();
+                currentUser = null;
+                showSection('login');
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+            } catch (error) {
+                console.error('Erro ao fazer logout:', error);
+            }
         }
 
         // Cadastrar usuário
-        function registerUser() {
+        async function registerUser() {
             const user = {
                 username: document.getElementById('regUsername').value.trim(),
                 fullName: document.getElementById('regFullName').value,
@@ -443,96 +433,71 @@
                 document.getElementById('registerError').textContent = 'Preencha os campos obrigatórios';
                 return;
             }
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            if (users.some(u => u.username === user.username)) {
-                document.getElementById('registerError').textContent = 'Usuário já existe';
-                return;
+            try {
+                const userDoc = await db.collection('usuarios').doc(user.username).get();
+                if (userDoc.exists) {
+                    document.getElementById('registerError').textContent = 'Usuário já existe';
+                    return;
+                }
+                await auth.createUserWithEmailAndPassword(`${user.username}@admz.app`, user.password);
+                await db.collection('usuarios').doc(user.username).set(user);
+                document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
+                setTimeout(() => showSection('manageUsers'), 1000);
+            } catch (error) {
+                document.getElementById('registerError').textContent = error.message;
+                console.error('Erro no cadastro:', error);
             }
-            users.push(user);
-            localStorage.setItem('users', JSON.stringify(users));
-            document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
-            setTimeout(() => showSection('manageUsers'), 1000);
         }
-
-        // Cadastrar usuário com Firebase (descomente para usar)
-        /*
-        function registerUser() {
-            const user = {
-                username: document.getElementById('regUsername').value.trim(),
-                fullName: document.getElementById('regFullName').value,
-                cpf: document.getElementById('regCPF').value,
-                birthDate: document.getElementById('regBirthDate').value,
-                address: document.getElementById('regAddress').value,
-                admissionDate: document.getElementById('regAdmissionDate').value,
-                position: document.getElementById('regPosition').value,
-                pis: document.getElementById('regPIS').value,
-                ctps: document.getElementById('regCTPS').value,
-                password: document.getElementById('regPassword').value,
-                isAdmin: document.getElementById('regIsAdmin').checked,
-                photo: null
-            };
-            if (!user.username || !user.fullName || !user.password) {
-                document.getElementById('registerError').textContent = 'Preencha os campos obrigatórios';
-                return;
-            }
-            firebase.auth().createUserWithEmailAndPassword(`${user.username}@admz.app`, user.password)
-                .then(userCredential => {
-                    return db.collection('usuarios').doc(user.username).set(user);
-                })
-                .then(() => {
-                    document.getElementById('registerSuccess').textContent = 'Usuário cadastrado com sucesso';
-                    setTimeout(() => showSection('manageUsers'), 1000);
-                })
-                .catch(error => {
-                    document.getElementById('registerError').textContent = error.message;
-                    console.error('Erro no cadastro:', error);
-                });
-        }
-        */
 
         // Carregar lista de usuários
-        function loadUsers() {
+        async function loadUsers() {
             const select = document.getElementById('userSelect');
             select.innerHTML = '<option value="">Selecione um usuário</option>';
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            users.forEach(user => {
-                const option = document.createElement('option');
-                option.value = user.username;
-                option.textContent = user.fullName;
-                select.appendChild(option);
-            });
+            try {
+                const snapshot = await db.collection('usuarios').get();
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const option = document.createElement('option');
+                    option.value = user.username;
+                    option.textContent = user.fullName;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar usuários:', error);
+            }
         }
 
         // Carregar perfil do usuário
-        function viewUserProfile() {
+        async function viewUserProfile() {
             const username = document.getElementById('userSelect').value;
             if (!username) return;
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const user = users.find(u => u.username === username);
-            if (user) {
-                document.getElementById('profileUsername').value = user.username;
-                document.getElementById('profileFullName').value = user.fullName;
-                document.getElementById('profileCPF').value = user.cpf;
-                document.getElementById('profileBirthDate').value = user.birthDate;
-                document.getElementById('profileAddress').value = user.address;
-                document.getElementById('profileAdmissionDate').value = user.admissionDate;
-                document.getElementById('profilePosition').value = user.position;
-                document.getElementById('profilePIS').value = user.pis;
-                document.getElementById('profileCTPS').value = user.ctps;
-                document.getElementById('profilePassword').value = user.password;
-                document.getElementById('profileIsAdmin').checked = user.isAdmin;
-                showSection('userProfile');
+            try {
+                const userDoc = await db.collection('usuarios').doc(username).get();
+                if (userDoc.exists) {
+                    const user = userDoc.data();
+                    document.getElementById('profileUsername').value = user.username;
+                    document.getElementById('profileFullName').value = user.fullName;
+                    document.getElementById('profileCPF').value = user.cpf;
+                    document.getElementById('profileBirthDate').value = user.birthDate;
+                    document.getElementById('profileAddress').value = user.address;
+                    document.getElementById('profileAdmissionDate').value = user.admissionDate;
+                    document.getElementById('profilePosition').value = user.position;
+                    document.getElementById('profilePIS').value = user.pis;
+                    document.getElementById('profileCTPS').value = user.ctps;
+                    document.getElementById('profilePassword').value = user.password;
+                    document.getElementById('profileIsAdmin').checked = user.isAdmin;
+                    showSection('userProfile');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar perfil:', error);
             }
         }
 
         // Salvar perfil do usuário
-        function saveUserProfile() {
+        async function saveUserProfile() {
             const username = document.getElementById('profileUsername').value;
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const index = users.findIndex(u => u.username === username);
-            if (index !== -1) {
-                users[index] = {
-                    username,
+            try {
+                await db.collection('usuarios').doc(username).update({
                     fullName: document.getElementById('profileFullName').value,
                     cpf: document.getElementById('profileCPF').value,
                     birthDate: document.getElementById('profileBirthDate').value,
@@ -542,12 +507,12 @@
                     pis: document.getElementById('profilePIS').value,
                     ctps: document.getElementById('profileCTPS').value,
                     password: document.getElementById('profilePassword').value,
-                    isAdmin: document.getElementById('profileIsAdmin').checked,
-                    photo: users[index].photo
-                };
-                localStorage.setItem('users', JSON.stringify(users));
+                    isAdmin: document.getElementById('profileIsAdmin').checked
+                });
                 alert('Perfil atualizado com sucesso');
                 showSection('manageUsers');
+            } catch (error) {
+                console.error('Erro ao salvar perfil:', error);
             }
         }
 
@@ -557,16 +522,19 @@
         }
 
         // Excluir usuário
-        function deleteUser() {
+        async function deleteUser() {
             const username = document.getElementById('profileUsername').value;
-            let users = JSON.parse(localStorage.getItem('users') || '[]');
-            users = users.filter(u => u.username !== username);
-            localStorage.setItem('users', JSON.stringify(users));
-            let records = JSON.parse(localStorage.getItem('records') || '[]');
-            records = records.filter(r => r.username !== username);
-            localStorage.setItem('records', JSON.stringify(records));
-            alert('Usuário excluído com sucesso');
-            showSection('manageUsers');
+            try {
+                await db.collection('usuarios').doc(username).delete();
+                const records = await db.collection('registros').where('username', '==', username).get();
+                const batch = db.batch();
+                records.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                alert('Usuário excluído com sucesso');
+                showSection('manageUsers');
+            } catch (error) {
+                console.error('Erro ao excluir usuário:', error);
+            }
         }
 
         // Atualizar horário atual
@@ -577,7 +545,7 @@
         }
 
         // Registrar ponto
-        function recordTime(type) {
+        async function recordTime(type) {
             if (!currentUser) {
                 alert('Usuário não logado');
                 return;
@@ -588,73 +556,85 @@
                 alert('Não é possível registrar ponto em finais de semana');
                 return;
             }
-            const records = JSON.parse(localStorage.getItem('records') || '[]');
-            records.push({
-                username: currentUser.username,
-                date: date.toISOString().split('T')[0],
-                time: date.toLocaleTimeString('pt-BR'),
-                type
-            });
-            localStorage.setItem('records', JSON.stringify(records));
-            alert(`${type} registrada com sucesso`);
+            try {
+                await db.collection('registros').add({
+                    username: currentUser.username,
+                    date: date.toISOString().split('T')[0],
+                    time: date.toLocaleTimeString('pt-BR'),
+                    type
+                });
+                alert(`${type} registrada com sucesso`);
+            } catch (error) {
+                console.error('Erro ao registrar ponto:', error);
+            }
         }
 
         // Carregar registros do usuário
-        function loadUserRecords() {
+        async function loadUserRecords() {
             const username = document.getElementById('userSelect').value;
-            const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === username);
             const table = document.getElementById('recordsTable');
             table.innerHTML = '';
-            const groupedRecords = groupRecordsByDate(records);
-            const allDates = getAllDates();
-            allDates.forEach(date => {
-                const dayOfWeek = new Date(date).getDay();
-                const row = document.createElement('tr');
-                if (dayOfWeek === 6) {
-                    row.innerHTML = `<td>${date}</td><td colspan="4">Sábado = COMPENSADO</td><td></td>`;
-                } else if (dayOfWeek === 0) {
-                    row.innerHTML = `<td>${date}</td><td colspan="4">Domingo = DSR</td><td></td>`;
-                } else {
-                    row.innerHTML = `
-                        <td>${date}</td>
-                        <td>${groupedRecords[date]?.Entrada || ''}</td>
-                        <td>${groupedRecords[date]?.Pausa || ''}</td>
-                        <td>${groupedRecords[date]?.Retorno || ''}</td>
-                        <td>${groupedRecords[date]?.Saída || ''}</td>
-                        <td><button onclick="editRecord('${username}', '${date}', 'Entrada')">Editar</button></td>
-                    `;
-                }
-                table.appendChild(row);
-            });
-            updateReportSummary(records, 'reportSummary');
+            try {
+                const snapshot = await db.collection('registros').where('username', '==', username).get();
+                const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const groupedRecords = groupRecordsByDate(records);
+                const allDates = getAllDates();
+                allDates.forEach(date => {
+                    const dayOfWeek = new Date(date).getDay();
+                    const row = document.createElement('tr');
+                    if (dayOfWeek === 6) {
+                        row.innerHTML = `<td>${date}</td><td colspan="4">Sábado = COMPENSADO</td><td></td>`;
+                    } else if (dayOfWeek === 0) {
+                        row.innerHTML = `<td>${date}</td><td colspan="4">Domingo = DSR</td><td></td>`;
+                    } else {
+                        row.innerHTML = `
+                            <td>${date}</td>
+                            <td>${groupedRecords[date]?.Entrada || ''}</td>
+                            <td>${groupedRecords[date]?.Pausa || ''}</td>
+                            <td>${groupedRecords[date]?.Retorno || ''}</td>
+                            <td>${groupedRecords[date]?.Saída || ''}</td>
+                            <td><button onclick="editRecord('${username}', '${date}', 'Entrada')">Editar</button></td>
+                        `;
+                    }
+                    table.appendChild(row);
+                });
+                updateReportSummary(records, 'reportSummary');
+            } catch (error) {
+                console.error('Erro ao carregar registros:', error);
+            }
         }
 
         // Carregar meus registros
-        function loadMyRecords() {
-            const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === currentUser.username);
+        async function loadMyRecords() {
             const table = document.getElementById('myRecordsTable');
             table.innerHTML = '';
-            const groupedRecords = groupRecordsByDate(records);
-            const allDates = getAllDates();
-            allDates.forEach(date => {
-                const dayOfWeek = new Date(date).getDay();
-                const row = document.createElement('tr');
-                if (dayOfWeek === 6) {
-                    row.innerHTML = `<td>${date}</td><td colspan="4">Sábado = COMPENSADO</td>`;
-                } else if (dayOfWeek === 0) {
-                    row.innerHTML = `<td>${date}</td><td colspan="4">Domingo = DSR</td>`;
-                } else {
-                    row.innerHTML = `
-                        <td>${date}</td>
-                        <td>${groupedRecords[date]?.Entrada || ''}</td>
-                        <td>${groupedRecords[date]?.Pausa || ''}</td>
-                        <td>${groupedRecords[date]?.Retorno || ''}</td>
-                        <td>${groupedRecords[date]?.Saída || ''}</td>
-                    `;
-                }
-                table.appendChild(row);
-            });
-            updateReportSummary(records, 'myReportSummary');
+            try {
+                const snapshot = await db.collection('registros').where('username', '==', currentUser.username).get();
+                const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const groupedRecords = groupRecordsByDate(records);
+                const allDates = getAllDates();
+                allDates.forEach(date => {
+                    const dayOfWeek = new Date(date).getDay();
+                    const row = document.createElement('tr');
+                    if (dayOfWeek === 6) {
+                        row.innerHTML = `<td>${date}</td><td colspan="4">Sábado = COMPENSADO</td>`;
+                    } else if (dayOfWeek === 0) {
+                        row.innerHTML = `<td>${date}</td><td colspan="4">Domingo = DSR</td>`;
+                    } else {
+                        row.innerHTML = `
+                            <td>${date}</td>
+                            <td>${groupedRecords[date]?.Entrada || ''}</td>
+                            <td>${groupedRecords[date]?.Pausa || ''}</td>
+                            <td>${groupedRecords[date]?.Retorno || ''}</td>
+                            <td>${groupedRecords[date]?.Saída || ''}</td>
+                        `;
+                    }
+                    table.appendChild(row);
+                });
+                updateReportSummary(records, 'myReportSummary');
+            } catch (error) {
+                console.error('Erro ao carregar meus registros:', error);
+            }
         }
 
         // Agrupar registros por data
@@ -694,32 +674,33 @@
         }
 
         // Editar registro
-        function editRecord(username, date, type) {
-            const records = JSON.parse(localStorage.getItem('records') || '[]');
-            const record = records.find(r => r.username === username && r.date === date && r.type === type);
-            if (record) {
-                editingRecord = record;
-                document.getElementById('editRecordDateTime').value = `${record.date}T${record.time}`;
-                document.getElementById('editRecordType').value = record.type;
-                showSection('editRecord');
+        async function editRecord(username, date, type) {
+            try {
+                const snapshot = await db.collection('registros').where('username', '==', username).where('date', '==', date).where('type', '==', type).get();
+                if (!snapshot.empty) {
+                    editingRecord = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+                    document.getElementById('editRecordDateTime').value = `${editingRecord.date}T${editingRecord.time}`;
+                    document.getElementById('editRecordType').value = editingRecord.type;
+                    showSection('editRecord');
+                }
+            } catch (error) {
+                console.error('Erro ao editar registro:', error);
             }
         }
 
         // Salvar registro
-        function saveRecord() {
-            const records = JSON.parse(localStorage.getItem('records') || '[]');
-            const index = records.findIndex(r => r === editingRecord);
-            if (index !== -1) {
+        async function saveRecord() {
+            try {
                 const dateTime = document.getElementById('editRecordDateTime').value;
-                records[index] = {
-                    ...editingRecord,
+                await db.collection('registros').doc(editingRecord.id).update({
                     date: dateTime.split('T')[0],
                     time: dateTime.split('T')[1],
                     type: document.getElementById('editRecordType').value
-                };
-                localStorage.setItem('records', JSON.stringify(records));
+                });
                 alert('Registro atualizado com sucesso');
                 showSection('userRecords');
+            } catch (error) {
+                console.error('Erro ao salvar registro:', error);
             }
         }
 
@@ -734,14 +715,13 @@
         }
 
         // Excluir registro
-        function deleteRecord() {
-            const records = JSON.parse(localStorage.getItem('records') || '[]');
-            const index = records.findIndex(r => r === editingRecord);
-            if (index !== -1) {
-                records.splice(index, 1);
-                localStorage.setItem('records', JSON.stringify(records));
+        async function deleteRecord() {
+            try {
+                await db.collection('registros').doc(editingRecord.id).delete();
                 alert('Registro excluído com sucesso');
                 showSection('userRecords');
+            } catch (error) {
+                console.error('Erro ao excluir registro:', error);
             }
         }
 
@@ -756,45 +736,55 @@
         }
 
         // Limpar registros
-        function clearRecords() {
-            let records = JSON.parse(localStorage.getItem('records') || '[]');
-            records = records.filter(r => r.username !== currentUser.username);
-            localStorage.setItem('records', JSON.stringify(records));
-            alert('Registros limpos com sucesso');
-            showSection('timeTracking');
+        async function clearRecords() {
+            try {
+                const snapshot = await db.collection('registros').where('username', '==', currentUser.username).get();
+                const batch = db.batch();
+                snapshot.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                alert('Registros limpos com sucesso');
+                showSection('timeTracking');
+            } catch (error) {
+                console.error('Erro ao limpar registros:', error);
+            }
         }
 
         // Exportar registros em PDF
-        function exportRecordsPDF() {
+        async function exportRecordsPDF() {
             const username = document.getElementById('userSelect').value;
-            const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === username);
-            const doc = new jsPDF();
-            doc.text(`Registros do Usuário: ${username}`, 10, 10);
-            let y = 20;
-            const groupedRecords = groupRecordsByDate(records);
-            const allDates = getAllDates();
-            allDates.forEach(date => {
-                const dayOfWeek = new Date(date).getDay();
-                if (dayOfWeek === 6) {
-                    doc.text(`${date}: Sábado = COMPENSADO`, 10, y);
-                } else if (dayOfWeek === 0) {
-                    doc.text(`${date}: Domingo = DSR`, 10, y);
-                } else {
-                    doc.text(`${date}: Entrada: ${groupedRecords[date]?.Entrada || ''}, Pausa: ${groupedRecords[date]?.Pausa || ''}, Retorno: ${groupedRecords[date]?.Retorno || ''}, Saída: ${groupedRecords[date]?.Saída || ''}`, 10, y);
-                }
-                y += 10;
-            });
-            doc.text(`Total de horas trabalhadas: ${records.reduce((sum, r) => {
-                if (r.type === 'Saída' && records.some(rec => rec.date === r.date && rec.type === 'Entrada')) {
-                    const entry = records.find(rec => rec.date === r.date && rec.type === 'Entrada');
-                    const exit = new Date(`${r.date} ${r.time}`);
-                    const start = new Date(`${r.date} ${entry.time}`);
-                    return sum + (exit - start) / (1000 * 60 * 60);
-                }
-                return sum;
-            }, 0).toFixed(2)} horas`, 10, y + 10);
-            doc.text('Assinatura do funcionário: ____________________', 10, y + 20);
-            doc.save(`registros_${username}.pdf`);
+            try {
+                const snapshot = await db.collection('registros').where('username', '==', username).get();
+                const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const doc = new jsPDF();
+                doc.text(`Registros do Usuário: ${username}`, 10, 10);
+                let y = 20;
+                const groupedRecords = groupRecordsByDate(records);
+                const allDates = getAllDates();
+                allDates.forEach(date => {
+                    const dayOfWeek = new Date(date).getDay();
+                    if (dayOfWeek === 6) {
+                        doc.text(`${date}: Sábado = COMPENSADO`, 10, y);
+                    } else if (dayOfWeek === 0) {
+                        doc.text(`${date}: Domingo = DSR`, 10, y);
+                    } else {
+                        doc.text(`${date}: Entrada: ${groupedRecords[date]?.Entrada || ''}, Pausa: ${groupedRecords[date]?.Pausa || ''}, Retorno: ${groupedRecords[date]?.Retorno || ''}, Saída: ${groupedRecords[date]?.Saída || ''}`, 10, y);
+                    }
+                    y += 10;
+                });
+                doc.text(`Total de horas trabalhadas: ${records.reduce((sum, r) => {
+                    if (r.type === 'Saída' && records.some(rec => rec.date === r.date && rec.type === 'Entrada')) {
+                        const entry = records.find(rec => rec.date === r.date && rec.type === 'Entrada');
+                        const exit = new Date(`${r.date} ${r.time}`);
+                        const start = new Date(`${r.date} ${entry.time}`);
+                        return sum + (exit - start) / (1000 * 60 * 60);
+                    }
+                    return sum;
+                }, 0).toFixed(2)} horas`, 10, y + 10);
+                doc.text('Assinatura do funcionário: ____________________', 10, y + 20);
+                doc.save(`registros_${username}.pdf`);
+            } catch (error) {
+                console.error('Erro ao exportar PDF:', error);
+            }
         }
 
         // Exportar perfil do usuário em PDF
@@ -815,39 +805,43 @@
         }
 
         // Exportar registros em CSV
-        function exportRecordsCSV() {
-            const records = JSON.parse(localStorage.getItem('records') || '[]').filter(r => r.username === currentUser.username);
-            const groupedRecords = groupRecordsByDate(records);
-            const allDates = getAllDates();
-            let csv = 'Dia,Entrada,Pausa,Retorno,Saída\n';
-            allDates.forEach(date => {
-                const dayOfWeek = new Date(date).getDay();
-                if (dayOfWeek === 6) {
-                    csv += `${date},,,,"Sábado = COMPENSADO"\n`;
-                } else if (dayOfWeek === 0) {
-                    csv += `${date},,,,"Domingo = DSR"\n`;
-                } else {
-                    csv += `${date},${groupedRecords[date]?.Entrada || ''},${groupedRecords[date]?.Pausa || ''},${groupedRecords[date]?.Retorno || ''},${groupedRecords[date]?.Saída || ''}\n`;
-                }
-            });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `registros_${currentUser.username}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
+        async function exportRecordsCSV() {
+            try {
+                const snapshot = await db.collection('registros').where('username', '==', currentUser.username).get();
+                const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const groupedRecords = groupRecordsByDate(records);
+                const allDates = getAllDates();
+                let csv = 'Dia,Entrada,Pausa,Retorno,Saída\n';
+                allDates.forEach(date => {
+                    const dayOfWeek = new Date(date).getDay();
+                    if (dayOfWeek === 6) {
+                        csv += `${date},,,,"Sábado = COMPENSADO"\n`;
+                    } else if (dayOfWeek === 0) {
+                        csv += `${date},,,,"Domingo = DSR"\n`;
+                    } else {
+                        csv += `${date},${groupedRecords[date]?.Entrada || ''},${groupedRecords[date]?.Pausa || ''},${groupedRecords[date]?.Retorno || ''},${groupedRecords[date]?.Saída || ''}\n`;
+                    }
+                });
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `registros_${currentUser.username}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Erro ao exportar CSV:', error);
+            }
         }
 
         // Remover foto
-        function removePhoto() {
+        async function removePhoto() {
             const username = document.getElementById('profileUsername').value;
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const index = users.findIndex(u => u.username === username);
-            if (index !== -1) {
-                users[index].photo = null;
-                localStorage.setItem('users', JSON.stringify(users));
+            try {
+                await db.collection('usuarios').doc(username).update({ photo: null });
                 alert('Foto removida com sucesso');
+            } catch (error) {
+                console.error('Erro ao remover foto:', error);
             }
         }
 
