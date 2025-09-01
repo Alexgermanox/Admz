@@ -131,12 +131,14 @@
     <div id="containerNotificacao"></div>
 
     <!-- Tela de Login -->
-  <div id="login" class="section">
-    <h2>Login</h2>
-    <input id="loginUsername" class="form-control mb-2" placeholder="Usuário">
-    <input id="loginPassword" class="form-control mb-2" placeholder="Senha" type="password">
-    <button class="btn btn-primary w-100 mb-2" onclick="login()">Entrar</button>
-    <div id="loginError" class="text-danger"></div>
+    <div id="telaLogin" class="container mt-5">
+        <div class="cartao shadow">
+            <div class="card-body">
+                <h1 class="card-title text-center">Entrar</h1>
+                <input type="text" id="nomeUsuarioLogin" class="form-control mb-3" placeholder="Nome de usuário" required>
+                <input type="password" id="senhaLogin" class="form-control mb-3" placeholder="Senha" required>
+                <button id="botaoLogin" class="btn btn-primary w-100 mb-2" onclick="entrar()">Entrar</button>
+            </div>
         </div>
     </div>
 
@@ -1533,84 +1535,210 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
   import { getFirestore, collection, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-  // Configuração do Firebase
-  const firebaseConfig = {
+ <script>
+// Firebase config
+const firebaseConfig = {
     apiKey: "AIzaSyCwHEYAAWzuArnjHKyBB2HQornlGXgXcwc",
     authDomain: "admz-4cc94.firebaseapp.com",
     projectId: "admz-4cc94",
-    storageBucket: "admz-4cc94.firebasestorage.app",
+    storageBucket: "admz-4cc94.appspot.com",
     messagingSenderId: "1058002382869",
     appId: "1:1058002382869:web:01e295c26aab0c662b1e1c",
     measurementId: "G-WFJ4D9JFGC"
-  };
+};
 
-  // Inicializa Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+// Inicializa Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser = null;
 
-  // Criar usuário no Firebase
-  async function registrarNoFirebase(usuario, senha) {
-    const emailFake = `${usuario}@admz.app`;
-    try {
-      await createUserWithEmailAndPassword(auth, emailFake, senha);
-      console.log("Usuário registrado no Firebase:", usuario);
-      return true;
-    } catch (error) {
-      if (error.code === "auth/email-already-in-use") {
-        console.warn("Usuário já existe no Firebase.");
-        return true;
-      }
-      console.error("Erro ao registrar no Firebase:", error);
-      return false;
+function showSection(id){
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.getElementById(id)?.classList.add("active");
+    if(id === 'manageUsers') loadUsers();
+    if(id === 'manageUsers') loadRecords();
+}
+
+// LOGIN
+async function login(){
+    const username = document.getElementById("loginUsername").value;
+    const password = document.getElementById("loginPassword").value;
+    try{
+        await auth.signInWithEmailAndPassword(username+"@admz.app", password);
+        currentUser = username;
+        showSection('manageUsers');
+    } catch(e){
+        document.getElementById("loginError").textContent = e.message;
     }
-  }
+}
 
-  // Login no Firebase
-  async function loginNoFirebase(usuario, senha) {
-    const emailFake = `${usuario}@admz.app`;
-    try {
-      await signInWithEmailAndPassword(auth, emailFake, senha);
-      console.log("Login no Firebase bem-sucedido:", usuario);
-      return true;
-    } catch (error) {
-      console.error("Erro no login Firebase:", error);
-      return false;
+async function logout(){
+    await auth.signOut();
+    currentUser = null;
+    showSection('login');
+}
+
+// CPF Validation
+function validarCPF(cpf){
+    cpf = cpf.replace(/[^\d]+/g,'');
+    if(cpf.length !== 11) return false;
+    let sum=0,r;
+    for(let i=1;i<=9;i++) sum+=parseInt(cpf[i-1])*(11-i);
+    r=(sum*10)%11;
+    if(r===10||r===11) r=0;
+    if(r!==parseInt(cpf[9])) return false;
+    sum=0;
+    for(let i=1;i<=10;i++) sum+=parseInt(cpf[i-1])*(12-i);
+    r=(sum*10)%11;
+    if(r===10||r===11) r=0;
+    if(r!==parseInt(cpf[10])) return false;
+    return true;
+}
+
+// USER MANAGEMENT
+async function registerUser(){
+    const u = {
+        username: document.getElementById('regUsername').value.trim(),
+        fullName: document.getElementById('regFullName').value,
+        cpf: document.getElementById('regCPF').value,
+        birthDate: document.getElementById('regBirthDate').value,
+        address: document.getElementById('regAddress').value,
+        admissionDate: document.getElementById('regAdmissionDate').value,
+        position: document.getElementById('regPosition').value,
+        pis: document.getElementById('regPIS').value,
+        ctps: document.getElementById('regCTPS').value,
+        password: document.getElementById('regPassword').value,
+        isAdmin: document.getElementById('regIsAdmin').checked
+    };
+    if(!u.username || !u.fullName || !u.password){ document.getElementById("registerError").textContent="Preencha os campos obrigatórios"; return;}
+    if(u.cpf && !validarCPF(u.cpf)){ document.getElementById("registerError").textContent="CPF inválido"; return;}
+    try{
+        const userDoc = await db.collection("usuarios").doc(u.username).get();
+        if(userDoc.exists){ document.getElementById("registerError").textContent="Usuário já existe"; return; }
+        await auth.createUserWithEmailAndPassword(u.username+"@admz.app", u.password);
+        await db.collection("usuarios").doc(u.username).set(u);
+        document.getElementById("registerSuccess").textContent="Usuário cadastrado!";
+        setTimeout(()=>showSection('manageUsers'),1000);
+    } catch(e){ document.getElementById("registerError").textContent=e.message;}
+}
+
+async function loadUsers(){
+    const select=document.getElementById('userSelect');
+    select.innerHTML='<option value="">Selecione um usuário</option>';
+    const snapshot=await db.collection("usuarios").get();
+    snapshot.forEach(doc=>{
+        const u=doc.data();
+        const opt=document.createElement("option");
+        opt.value=u.username;
+        opt.textContent=u.fullName;
+        select.appendChild(opt);
+    });
+}
+
+async function viewUserProfile(){
+    const username=document.getElementById('userSelect').value;
+    if(!username) return;
+    const doc=await db.collection("usuarios").doc(username).get();
+    if(doc.exists){
+        const u=doc.data();
+        document.getElementById('profileUsername').value=u.username;
+        document.getElementById('profileFullName').value=u.fullName;
+        document.getElementById('profileCPF').value=u.cpf;
+        document.getElementById('profileBirthDate').value=u.birthDate;
+        document.getElementById('profileAddress').value=u.address;
+        document.getElementById('profileAdmissionDate').value=u.admissionDate;
+        document.getElementById('profilePosition').value=u.position;
+        document.getElementById('profilePIS').value=u.pis;
+        document.getElementById('profileCTPS').value=u.ctps;
+        document.getElementById('profilePassword').value=u.password;
+        document.getElementById('profileIsAdmin').checked=u.isAdmin;
+        showSection('userProfile');
     }
-  }
+}
 
-  // Carregar usuários do Firebase
-  async function carregarUsuariosFirebase() {
-    try {
-      const querySnapshot = await getDocs(collection(db, "usuarios"));
-      const usuarios = [];
-      querySnapshot.forEach((doc) => {
-        usuarios.push(doc.data());
-      });
-      localStorage.setItem('usuarios', JSON.stringify(usuarios));
-      console.log("Usuários carregados do Firebase:", usuarios);
-    } catch (error) {
-      console.error("Erro ao carregar usuários do Firebase:", error);
-    }
-  }
+async function saveUserProfile(){
+    const username=document.getElementById('profileUsername').value;
+    if(document.getElementById('profileCPF').value && !validarCPF(document.getElementById('profileCPF').value)){ alert("CPF inválido"); return; }
+    await db.collection("usuarios").doc(username).update({
+        fullName: document.getElementById('profileFullName').value,
+        cpf: document.getElementById('profileCPF').value,
+        birthDate: document.getElementById('profileBirthDate').value,
+        address: document.getElementById('profileAddress').value,
+        admissionDate: document.getElementById('profileAdmissionDate').value,
+        position: document.getElementById('profilePosition').value,
+        pis: document.getElementById('profilePIS').value,
+        ctps: document.getElementById('profileCTPS').value,
+        password: document.getElementById('profilePassword').value,
+        isAdmin: document.getElementById('profileIsAdmin').checked
+    });
+    alert("Perfil atualizado!");
+    showSection('manageUsers');
+}
 
-  // Excluir usuário no Firebase
-  async function excluirUsuarioFirebase(nome) {
-    try {
-      await deleteDoc(doc(db, "usuarios", nome));
-      console.log(`Usuário ${nome} removido do Firestore`);
-      return true;
-    } catch (error) {
-      console.error("Erro ao excluir usuário do Firebase:", error);
-      return false;
-    }
-  }
+async function deleteUser(){
+    const username=document.getElementById('profileUsername').value;
+    await db.collection("usuarios").doc(username).delete();
+    alert("Usuário excluído!");
+    showSection('manageUsers');
+}
 
-  // Tornando funções globais
-  window.registrarNoFirebase = registrarNoFirebase;
-  window.loginNoFirebase = loginNoFirebase;
-  window.carregarUsuariosFirebase = carregarUsuariosFirebase;
-  window.excluirUsuarioFirebase = excluirUsuarioFirebase;
+// RECORD MANAGEMENT
+async function addRecord(){
+    const r = {
+        username: document.getElementById('recordUsername').value,
+        date: document.getElementById('recordDate').value,
+        desc: document.getElementById('recordDesc').value
+    };
+    if(!r.username || !r.date || !r.desc){ alert("Preencha todos os campos"); return;}
+    await db.collection("registros").add(r);
+    alert("Registro adicionado!");
+    showSection('manageUsers');
+    loadRecords();
+}
+
+async function loadRecords(){
+    const tbody=document.querySelector("#recordsTable tbody");
+    tbody.innerHTML="";
+    const snapshot=await db.collection("registros").get();
+    snapshot.forEach(doc=>{
+        const r=doc.data();
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td>${r.username}</td><td>${r.date}</td><td>${r.desc}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+// EXPORT PDF
+function exportPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 10;
+    doc.text("Registros", 10, y);
+    y+=10;
+    document.querySelectorAll("#recordsTable tbody tr").forEach(tr=>{
+        const tds = tr.querySelectorAll("td");
+        doc.text(`${tds[0].textContent} | ${tds[1].textContent} | ${tds[2].textContent}`, 10, y);
+        y+=10;
+    });
+    doc.save("registros.pdf");
+}
+
+// EXPORT CSV
+function exportCSV(){
+    let csv="Usuário,Data,Descrição\n";
+    document.querySelectorAll("#recordsTable tbody tr").forEach(tr=>{
+        const tds = tr.querySelectorAll("td");
+        csv+=`${tds[0].textContent},${tds[1].textContent},${tds[2].textContent}\n`;
+    });
+    const blob=new Blob([csv],{type:"text/csv"});
+    const link=document.createElement("a");
+    link.href=URL.createObjectURL(blob);
+    link.download="registros.csv";
+    link.click();
+}
+
+window.onload=function(){ showSection('login'); };
 </script>
 </body>
 </html>
