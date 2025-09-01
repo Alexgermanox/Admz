@@ -375,44 +375,31 @@
                             isAdmin: true,
                             photo: null
                         });
-                        console.log('Administrador criado com sucesso');
+                        console.log('Administrador criado com sucesso no Firestore');
                     } catch (error) {
                         if (error.code === 'auth/email-already-in-use') {
-                            console.log('Usuário admin já existe no Authentication');
+                            console.log('Usuário admin já existe no Authentication, verificando Firestore');
                         } else {
-                            console.error('Erro ao criar administrador:', error);
+                            console.error('Erro ao criar administrador:', error.code, error.message);
                         }
                     }
                 } else {
                     console.log('Usuário admin já existe no Firestore');
                 }
             } catch (error) {
-                console.error('Erro ao verificar administrador:', error);
+                console.error('Erro ao verificar administrador:', error.code, error.message);
             }
-        }
-
-        // Mostrar seção
-        function showSection(sectionId) {
-            document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
-            const section = document.getElementById(sectionId);
-            if (section) section.classList.add('active');
-            if (sectionId === 'manageUsers') loadUsers();
-            if (sectionId === 'userProfile') loadUserProfile();
-            if (sectionId === 'userRecords') loadUserRecords();
-            if (sectionId === 'myRecords') loadMyRecords();
-            if (sectionId === 'timeTracking') updateCurrentTime();
-            document.getElementById('loginError').textContent = '';
-            document.getElementById('registerSuccess').textContent = '';
-            document.getElementById('registerError').textContent = '';
         }
 
         // Login
         async function login() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
+            const email = `${username}@admz.app`;
+            console.log('Tentando login com:', email, 'Senha:', password);
             try {
-                console.log('Tentando login com:', `${username}@admz.app`);
-                const userCredential = await auth.signInWithEmailAndPassword(`${username}@admz.app`, password);
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                console.log('Autenticação bem-sucedida, UID:', userCredential.user.uid);
                 const userDoc = await db.collection('usuarios').doc(username).get();
                 if (userDoc.exists) {
                     currentUser = userDoc.data();
@@ -422,11 +409,69 @@
                     showSection(currentUser.isAdmin ? 'adminDashboard' : 'timeTracking');
                 } else {
                     document.getElementById('loginError').textContent = 'Usuário não encontrado no Firestore';
-                    console.error('Usuário não encontrado no Firestore');
+                    console.error('Usuário não encontrado no Firestore:', username);
+                    // Tentar recriar o documento admin no Firestore
+                    if (username === 'admin') {
+                        console.log('Recriando documento admin no Firestore...');
+                        await db.collection('usuarios').doc('admin').set({
+                            username: 'admin',
+                            fullName: 'Administrador',
+                            cpf: '',
+                            birthDate: '',
+                            address: '',
+                            admissionDate: '',
+                            position: 'Administrador',
+                            pis: '',
+                            ctps: '',
+                            password: 'admin123',
+                            isAdmin: true,
+                            photo: null
+                        });
+                        console.log('Documento admin recriado, tentando login novamente...');
+                        const retryDoc = await db.collection('usuarios').doc(username).get();
+                        if (retryDoc.exists) {
+                            currentUser = retryDoc.data();
+                            document.getElementById('adminName').textContent = currentUser.fullName;
+                            document.getElementById('trackingUsername').textContent = currentUser.fullName;
+                            showSection(currentUser.isAdmin ? 'adminDashboard' : 'timeTracking');
+                        }
+                    }
                 }
             } catch (error) {
-                document.getElementById('loginError').textContent = 'Usuário ou senha inválidos';
+                document.getElementById('loginError').textContent = `Erro: ${error.message}`;
                 console.error('Erro no login:', error.code, error.message);
+                if (error.code === 'auth/user-not-found' && username === 'admin') {
+                    console.log('Usuário admin não encontrado, tentando criar...');
+                    try {
+                        await auth.createUserWithEmailAndPassword('admin@admz.app', 'admin123');
+                        await db.collection('usuarios').doc('admin').set({
+                            username: 'admin',
+                            fullName: 'Administrador',
+                            cpf: '',
+                            birthDate: '',
+                            address: '',
+                            admissionDate: '',
+                            position: 'Administrador',
+                            pis: '',
+                            ctps: '',
+                            password: 'admin123',
+                            isAdmin: true,
+                            photo: null
+                        });
+                        console.log('Usuário admin criado, tentando login novamente...');
+                        await auth.signInWithEmailAndPassword('admin@admz.app', 'admin123');
+                        const userDoc = await db.collection('usuarios').doc('admin').get();
+                        if (userDoc.exists) {
+                            currentUser = userDoc.data();
+                            document.getElementById('adminName').textContent = currentUser.fullName;
+                            document.getElementById('trackingUsername').textContent = currentUser.fullName;
+                            showSection('adminDashboard');
+                        }
+                    } catch (createError) {
+                        console.error('Erro ao criar admin:', createError.code, createError.message);
+                        document.getElementById('loginError').textContent = `Erro ao criar admin: ${createError.message}`;
+                    }
+                }
             }
         }
 
@@ -440,7 +485,7 @@
                 document.getElementById('loginPassword').value = '';
                 console.log('Logout bem-sucedido');
             } catch (error) {
-                console.error('Erro ao fazer logout:', error);
+                console.error('Erro ao fazer logout:', error.code, error.message);
             }
         }
 
@@ -481,7 +526,7 @@
                 setTimeout(() => showSection('manageUsers'), 1000);
             } catch (error) {
                 document.getElementById('registerError').textContent = error.message;
-                console.error('Erro no cadastro:', error);
+                console.error('Erro no cadastro:', error.code, error.message);
             }
         }
 
@@ -500,7 +545,7 @@
                 });
                 console.log('Usuários carregados com sucesso');
             } catch (error) {
-                console.error('Erro ao carregar usuários:', error);
+                console.error('Erro ao carregar usuários:', error.code, error.message);
             }
         }
 
@@ -527,7 +572,7 @@
                     console.log('Perfil carregado:', username);
                 }
             } catch (error) {
-                console.error('Erro ao carregar perfil:', error);
+                console.error('Erro ao carregar perfil:', error.code, error.message);
             }
         }
 
@@ -556,7 +601,7 @@
                 console.log('Perfil atualizado:', username);
                 showSection('manageUsers');
             } catch (error) {
-                console.error('Erro ao salvar perfil:', error);
+                console.error('Erro ao salvar perfil:', error.code, error.message);
             }
         }
 
@@ -578,7 +623,7 @@
                 console.log('Usuário excluído:', username);
                 showSection('manageUsers');
             } catch (error) {
-                console.error('Erro ao excluir usuário:', error);
+                console.error('Erro ao excluir usuário:', error.code, error.message);
             }
         }
 
@@ -611,7 +656,7 @@
                 alert(`${type} registrada com sucesso`);
                 console.log('Ponto registrado:', type);
             } catch (error) {
-                console.error('Erro ao registrar ponto:', error);
+                console.error('Erro ao registrar ponto:', error.code, error.message);
             }
         }
 
@@ -647,7 +692,7 @@
                 updateReportSummary(records, 'reportSummary');
                 console.log('Registros do usuário carregados:', username);
             } catch (error) {
-                console.error('Erro ao carregar registros:', error);
+                console.error('Erro ao carregar registros:', error.code, error.message);
             }
         }
 
@@ -681,7 +726,7 @@
                 updateReportSummary(records, 'myReportSummary');
                 console.log('Meus registros carregados');
             } catch (error) {
-                console.error('Erro ao carregar meus registros:', error);
+                console.error('Erro ao carregar meus registros:', error.code, error.message);
             }
         }
 
@@ -733,7 +778,7 @@
                     console.log('Editando registro:', editingRecord);
                 }
             } catch (error) {
-                console.error('Erro ao editar registro:', error);
+                console.error('Erro ao editar registro:', error.code, error.message);
             }
         }
 
@@ -750,7 +795,7 @@
                 console.log('Registro atualizado:', editingRecord.id);
                 showSection('userRecords');
             } catch (error) {
-                console.error('Erro ao salvar registro:', error);
+                console.error('Erro ao salvar registro:', error.code, error.message);
             }
         }
 
@@ -772,7 +817,7 @@
                 console.log('Registro excluído:', editingRecord.id);
                 showSection('userRecords');
             } catch (error) {
-                console.error('Erro ao excluir registro:', error);
+                console.error('Erro ao excluir registro:', error.code, error.message);
             }
         }
 
@@ -797,7 +842,7 @@
                 console.log('Registros limpos para:', currentUser.username);
                 showSection('timeTracking');
             } catch (error) {
-                console.error('Erro ao limpar registros:', error);
+                console.error('Erro ao limpar registros:', error.code, error.message);
             }
         }
 
@@ -836,7 +881,7 @@
                 doc.save(`registros_${username}.pdf`);
                 console.log('PDF exportado:', username);
             } catch (error) {
-                console.error('Erro ao exportar PDF:', error);
+                console.error('Erro ao exportar PDF:', error.code, error.message);
             }
         }
 
@@ -885,7 +930,7 @@
                 URL.revokeObjectURL(url);
                 console.log('CSV exportado:', currentUser.username);
             } catch (error) {
-                console.error('Erro ao exportar CSV:', error);
+                console.error('Erro ao exportar CSV:', error.code, error.message);
             }
         }
 
@@ -897,8 +942,23 @@
                 alert('Foto removida com sucesso');
                 console.log('Foto removida:', username);
             } catch (error) {
-                console.error('Erro ao remover foto:', error);
+                console.error('Erro ao remover foto:', error.code, error.message);
             }
+        }
+
+        // Mostrar seção
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+            const section = document.getElementById(sectionId);
+            if (section) section.classList.add('active');
+            if (sectionId === 'manageUsers') loadUsers();
+            if (sectionId === 'userProfile') loadUserProfile();
+            if (sectionId === 'userRecords') loadUserRecords();
+            if (sectionId === 'myRecords') loadMyRecords();
+            if (sectionId === 'timeTracking') updateCurrentTime();
+            document.getElementById('loginError').textContent = '';
+            document.getElementById('registerSuccess').textContent = '';
+            document.getElementById('registerError').textContent = '';
         }
 
         // Inicializar
