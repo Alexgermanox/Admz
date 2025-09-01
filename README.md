@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -320,6 +320,7 @@
         const { jsPDF } = window.jspdf;
         let currentUser = null;
         let editingRecord = null;
+        let db, auth, storage;
 
         // Configuração do Firebase
         const firebaseConfig = {
@@ -331,10 +332,23 @@
             appId: "1:1058002382869:web:01e295c26aab0c662b1e1c",
             measurementId: "G-WFJ4D9JFGC"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const storage = firebase.storage();
+
+        // Inicializar Firebase e serviços
+        function initializeFirebase() {
+            return new Promise((resolve, reject) => {
+                try {
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+                    auth = firebase.auth();
+                    storage = firebase.storage();
+                    console.log('Firebase inicializado com sucesso');
+                    resolve();
+                } catch (error) {
+                    console.error('Erro ao inicializar Firebase:', error);
+                    reject(error);
+                }
+            });
+        }
 
         // Validação de CPF
         function validarCPF(cpf) {
@@ -378,7 +392,7 @@
                         console.log('Administrador criado com sucesso no Firestore');
                     } catch (error) {
                         if (error.code === 'auth/email-already-in-use') {
-                            console.log('Usuário admin já existe no Authentication, verificando Firestore');
+                            console.log('Usuário admin já existe no Authentication');
                         } else {
                             console.error('Erro ao criar administrador:', error.code, error.message);
                         }
@@ -393,6 +407,11 @@
 
         // Login
         async function login() {
+            if (!auth) {
+                document.getElementById('loginError').textContent = 'Erro: Firebase Authentication não inicializado';
+                console.error('Firebase Authentication não inicializado');
+                return;
+            }
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
             const email = `${username}@admz.app`;
@@ -410,7 +429,6 @@
                 } else {
                     document.getElementById('loginError').textContent = 'Usuário não encontrado no Firestore';
                     console.error('Usuário não encontrado no Firestore:', username);
-                    // Tentar recriar o documento admin no Firestore
                     if (username === 'admin') {
                         console.log('Recriando documento admin no Firestore...');
                         await db.collection('usuarios').doc('admin').set({
@@ -477,6 +495,10 @@
 
         // Logout
         async function logout() {
+            if (!auth) {
+                console.error('Firebase Authentication não inicializado');
+                return;
+            }
             try {
                 await auth.signOut();
                 currentUser = null;
@@ -491,6 +513,11 @@
 
         // Cadastrar usuário
         async function registerUser() {
+            if (!auth || !db) {
+                document.getElementById('registerError').textContent = 'Erro: Firebase não inicializado';
+                console.error('Firebase não inicializado');
+                return;
+            }
             const user = {
                 username: document.getElementById('regUsername').value.trim(),
                 fullName: document.getElementById('regFullName').value,
@@ -532,6 +559,10 @@
 
         // Carregar lista de usuários
         async function loadUsers() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const select = document.getElementById('userSelect');
             select.innerHTML = '<option value="">Selecione um usuário</option>';
             try {
@@ -551,6 +582,10 @@
 
         // Carregar perfil do usuário
         async function viewUserProfile() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const username = document.getElementById('userSelect').value;
             if (!username) return;
             try {
@@ -578,6 +613,10 @@
 
         // Salvar perfil do usuário
         async function saveUserProfile() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const username = document.getElementById('profileUsername').value;
             const cpf = document.getElementById('profileCPF').value;
             if (cpf && !validarCPF(cpf)) {
@@ -612,6 +651,10 @@
 
         // Excluir usuário
         async function deleteUser() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const username = document.getElementById('profileUsername').value;
             try {
                 await db.collection('usuarios').doc(username).delete();
@@ -640,6 +683,10 @@
                 alert('Usuário não logado');
                 return;
             }
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const date = new Date();
             const dayOfWeek = date.getDay();
             if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -662,6 +709,10 @@
 
         // Carregar registros do usuário
         async function loadUserRecords() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const username = document.getElementById('userSelect').value;
             const table = document.getElementById('recordsTable');
             table.innerHTML = '';
@@ -698,6 +749,10 @@
 
         // Carregar meus registros
         async function loadMyRecords() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const table = document.getElementById('myRecordsTable');
             table.innerHTML = '';
             try {
@@ -768,6 +823,10 @@
 
         // Editar registro
         async function editRecord(username, date, type) {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             try {
                 const snapshot = await db.collection('registros').where('username', '==', username).where('date', '==', date).where('type', '==', type).get();
                 if (!snapshot.empty) {
@@ -784,6 +843,10 @@
 
         // Salvar registro
         async function saveRecord() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             try {
                 const dateTime = document.getElementById('editRecordDateTime').value;
                 await db.collection('registros').doc(editingRecord.id).update({
@@ -811,6 +874,10 @@
 
         // Excluir registro
         async function deleteRecord() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             try {
                 await db.collection('registros').doc(editingRecord.id).delete();
                 alert('Registro excluído com sucesso');
@@ -833,6 +900,10 @@
 
         // Limpar registros
         async function clearRecords() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             try {
                 const snapshot = await db.collection('registros').where('username', '==', currentUser.username).get();
                 const batch = db.batch();
@@ -848,6 +919,10 @@
 
         // Exportar registros em PDF
         async function exportRecordsPDF() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const username = document.getElementById('userSelect').value;
             try {
                 const snapshot = await db.collection('registros').where('username', '==', username).get();
@@ -905,6 +980,10 @@
 
         // Exportar registros em CSV
         async function exportRecordsCSV() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             try {
                 const snapshot = await db.collection('registros').where('username', '==', currentUser.username).get();
                 const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -936,6 +1015,10 @@
 
         // Remover foto
         async function removePhoto() {
+            if (!db) {
+                console.error('Firestore não inicializado');
+                return;
+            }
             const username = document.getElementById('profileUsername').value;
             try {
                 await db.collection('usuarios').doc(username).update({ photo: null });
@@ -961,9 +1044,19 @@
             document.getElementById('registerError').textContent = '';
         }
 
-        // Inicializar
-        initializeAdmin();
-        showSection('login');
+        // Inicializar aplicativo
+        async function initApp() {
+            try {
+                await initializeFirebase();
+                await initializeAdmin();
+                showSection('login');
+            } catch (error) {
+                console.error('Erro ao inicializar aplicativo:', error);
+            }
+        }
+
+        // Iniciar aplicativo
+        initApp();
     </script>
 </body>
 </html>
