@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema Completo</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bater Ponto</title>
+    <!-- Inclui o Bootstrap para um design bonito -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <!-- Inclui jsPDF e jsPDF-AutoTable para exportar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
     <style>
         body {
             background-color: #f8f9fa; /* Fundo cinza claro */
@@ -131,14 +131,12 @@
     <div id="containerNotificacao"></div>
 
     <!-- Tela de Login -->
-    <div id="telaLogin" class="container mt-5">
-        <div class="cartao shadow">
-            <div class="card-body">
-                <h1 class="card-title text-center">Entrar</h1>
-                <input type="text" id="nomeUsuarioLogin" class="form-control mb-3" placeholder="Nome de usuário" required>
-                <input type="password" id="senhaLogin" class="form-control mb-3" placeholder="Senha" required>
-                <button id="botaoLogin" class="btn btn-primary w-100 mb-2" onclick="entrar()">Entrar</button>
-            </div>
+  <div id="login" class="section">
+    <h2>Login</h2>
+    <input id="loginUsername" class="form-control mb-2" placeholder="Usuário">
+    <input id="loginPassword" class="form-control mb-2" placeholder="Senha" type="password">
+    <button class="btn btn-primary w-100 mb-2" onclick="login()">Entrar</button>
+    <div id="loginError" class="text-danger"></div>
         </div>
     </div>
 
