@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -333,9 +333,24 @@
             measurementId: "G-WFJ4D9JFGC"
         };
 
+        // Verificar se os scripts do Firebase estão carregados
+        function checkFirebaseScripts() {
+            if (typeof firebase === 'undefined') {
+                console.error('Erro: Firebase SDK não carregado');
+                document.getElementById('loginError').textContent = 'Erro: Firebase SDK não carregado. Verifique sua conexão ou tente novamente.';
+                return false;
+            }
+            console.log('Firebase SDK carregado');
+            return true;
+        }
+
         // Inicializar Firebase e serviços
         function initializeFirebase() {
             return new Promise((resolve, reject) => {
+                if (!checkFirebaseScripts()) {
+                    reject(new Error('Firebase SDK não carregado'));
+                    return;
+                }
                 try {
                     firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
@@ -345,6 +360,7 @@
                     resolve();
                 } catch (error) {
                     console.error('Erro ao inicializar Firebase:', error);
+                    document.getElementById('loginError').textContent = `Erro ao inicializar Firebase: ${error.message}`;
                     reject(error);
                 }
             });
@@ -368,6 +384,10 @@
 
         // Inicializar administrador padrão
         async function initializeAdmin() {
+            if (!db || !auth) {
+                console.error('Firestore ou Authentication não inicializado');
+                return;
+            }
             try {
                 const adminRef = db.collection('usuarios').doc('admin');
                 const adminDoc = await adminRef.get();
@@ -1050,13 +1070,21 @@
                 await initializeFirebase();
                 await initializeAdmin();
                 showSection('login');
+                console.log('Aplicativo inicializado com sucesso');
             } catch (error) {
                 console.error('Erro ao inicializar aplicativo:', error);
+                document.getElementById('loginError').textContent = `Erro ao inicializar aplicativo: ${error.message}`;
             }
         }
 
-        // Iniciar aplicativo
-        initApp();
+        // Iniciar aplicativo após o carregamento dos scripts
+        window.onload = function() {
+            if (checkFirebaseScripts()) {
+                initApp();
+            } else {
+                document.getElementById('loginError').textContent = 'Erro: Firebase SDK não carregado. Verifique sua conexão.';
+            }
+        };
     </script>
 </body>
 </html>
