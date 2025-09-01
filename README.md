@@ -311,10 +311,10 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         const { jsPDF } = window.jspdf;
@@ -333,24 +333,30 @@
             measurementId: "G-WFJ4D9JFGC"
         };
 
-        // Verificar se os scripts do Firebase estão carregados
-        function checkFirebaseScripts() {
-            if (typeof firebase === 'undefined') {
-                console.error('Erro: Firebase SDK não carregado');
-                document.getElementById('loginError').textContent = 'Erro: Firebase SDK não carregado. Verifique sua conexão ou tente novamente.';
-                return false;
-            }
-            console.log('Firebase SDK carregado');
-            return true;
+        // Verificar se os scripts do Firebase estão carregados com retry
+        function checkFirebaseScripts(attempt = 1, maxAttempts = 3) {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined') {
+                    console.log('Firebase SDK carregado');
+                    resolve(true);
+                    return;
+                }
+                if (attempt >= maxAttempts) {
+                    console.error('Erro: Firebase SDK não carregado após', maxAttempts, 'tentativas');
+                    document.getElementById('loginError').textContent = 'Erro: Não foi possível carregar o Firebase SDK. Verifique sua conexão e tente novamente.';
+                    reject(new Error('Firebase SDK não carregado'));
+                    return;
+                }
+                console.log('Firebase SDK não carregado, tentando novamente... (Tentativa', attempt, ')');
+                setTimeout(() => {
+                    checkFirebaseScripts(attempt + 1, maxAttempts).then(resolve).catch(reject);
+                }, 1000);
+            });
         }
 
         // Inicializar Firebase e serviços
         function initializeFirebase() {
             return new Promise((resolve, reject) => {
-                if (!checkFirebaseScripts()) {
-                    reject(new Error('Firebase SDK não carregado'));
-                    return;
-                }
                 try {
                     firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
@@ -1067,6 +1073,7 @@
         // Inicializar aplicativo
         async function initApp() {
             try {
+                await checkFirebaseScripts();
                 await initializeFirebase();
                 await initializeAdmin();
                 showSection('login');
@@ -1079,11 +1086,7 @@
 
         // Iniciar aplicativo após o carregamento dos scripts
         window.onload = function() {
-            if (checkFirebaseScripts()) {
-                initApp();
-            } else {
-                document.getElementById('loginError').textContent = 'Erro: Firebase SDK não carregado. Verifique sua conexão.';
-            }
+            initApp();
         };
     </script>
 </body>
