@@ -1530,11 +1530,9 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
     
     <!-- Firebase SDK -->
 <script type="module">
-   // Importa Firebase
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-firestore.js";
-
+  // Importando Firebase
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
   // Configuração do Firebase
   const firebaseConfig = {
@@ -1548,117 +1546,74 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
   };
 
   // Inicializa Firebase
-   const app = initializeApp(firebaseConfig);
+  const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
 
-  window.firebaseServices = { auth, db }; 
-
-  async function cadastrar() {
-    const nome = document.getElementById('nomeUsuarioCadastro').value.trim();
-    const senha = document.getElementById('senhaCadastro').value.trim();
-    if (!nome || !senha) {
-        mostrarNotificacao('Nome de usuário e senha são obrigatórios.', 'danger');
-        return;
-    }
-
-// ======== Cadastro ========
-async function registrarNoFirebase(nome, senha, ehAdmin = false) {
+  // Função para criar conta no Firebase (usando usuário + senha)
+  async function registrarNoFirebase(usuario, senha) {
+    const emailFake = `${usuario}@admz.app`; // Cria email fictício
     try {
-        const emailFake = `${nome}@admz.app`;
-        const userCredential = await firebaseServices.auth.createUserWithEmailAndPassword(firebaseServices.auth, emailFake, senha);
-
-        // Salva dados extras no Firestore
-        await setDoc(doc(firebaseServices.db, "usuarios", userCredential.user.uid), {
-            nome,
-            ehAdmin
-        });
-
-        return true;
+      await createUserWithEmailAndPassword(auth, emailFake, senha);
+      console.log("Usuário registrado no Firebase:", usuario);
+      return true;
     } catch (error) {
-        console.error("Erro Firebase cadastro:", error);
-        return false;
+      if (error.code === "auth/email-already-in-use") {
+        console.warn("Usuário já existe no Firebase.");
+        return true; // Continua fluxo local
+      }
+      console.error("Erro ao registrar no Firebase:", error);
+      return false;
     }
-}
+  }
 
-// ======== Login ========
-async function loginNoFirebase(nome, senha) {
+  // Função para login no Firebase
+  async function loginNoFirebase(usuario, senha) {
+    const emailFake = `${usuario}@admz.app`;
     try {
-        const emailFake = `${nome}@admz.app`;
-        const userCredential = await signInWithEmailAndPassword(firebaseServices.auth, emailFake, senha);
-
-        // Puxa dados extras do Firestore
-        const docSnap = await getDoc(doc(firebaseServices.db, "usuarios", userCredential.user.uid));
-        if (docSnap.exists()) {
-            const dados = docSnap.data();
-            return { sucesso: true, dados };
-        } else {
-            console.error("Usuário sem dados no Firestore");
-            return { sucesso: false };
-        }
+      await signInWithEmailAndPassword(auth, emailFake, senha);
+      console.log("Login no Firebase bem-sucedido:", usuario);
+      return true;
     } catch (error) {
-        console.error("Erro Firebase login:", error);
-        return { sucesso: false };
+      console.error("Erro no login Firebase:", error);
+      return false;
     }
+  }
+
+  // Tornando funções globais para uso no seu código
+  window.registrarNoFirebase = registrarNoFirebase;
+  window.loginNoFirebase = loginNoFirebase;
+import { getFirestore, collection, getDocs, doc, deleteDoc } 
+  from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const db = getFirestore(app);
+
+async function carregarUsuariosFirebase() {
+  try {
+    const querySnapshot = await getDocs(collection(db, "usuarios"));
+    const usuarios = [];
+    querySnapshot.forEach((doc) => {
+      usuarios.push(doc.data());
+    });
+    localStorage.setItem('usuarios', JSON.stringify(usuarios)); 
+    console.log("Usuários carregados do Firebase:", usuarios);
+  } catch (error) {
+    console.error("Erro ao carregar usuários do Firebase:", error);
+  }
 }
 
-  // ======== Função de Cadastro ========
-async function cadastrar() {
-    const nome = document.getElementById('nomeUsuarioCadastro').value.trim();
-    const senha = document.getElementById('senhaCadastro').value.trim();
-    const ehAdmin = document.getElementById('ehAdmin').checked;
-
-    if (!nome || !senha) {
-        alert("Preencha todos os campos!");
-        return;
-    }
-
-    const sucessoFirebase = await registrarNoFirebase(nome, senha, ehAdmin);
-    if (!sucessoFirebase) {
-        alert("Erro ao cadastrar no Firebase!");
-        return;
-    }
-
-    // Atualiza localStorage só se Firebase ok
-    let usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
-    if (!usuarios.some(u => u.nome === nome)) {
-        usuarios.push({ nome, senha, ehAdmin });
-        localStorage.setItem('usuarios', JSON.stringify(usuarios));
-    }
-
-    alert("Usuário cadastrado com sucesso!");
-    mostrarTelaGerenciarUsuarios();
+async function excluirUsuarioFirebase(nome) {
+  try {
+    await deleteDoc(doc(db, "usuarios", nome));
+    console.log(`Usuário ${nome} removido do Firestore`);
+    return true;
+  } catch (error) {
+    console.error("Erro ao excluir usuário do Firebase:", error);
+    return false;
+  }
 }
 
-// ======== Função de Login ========
-async function entrar() {
-    const nome = document.getElementById('nomeUsuarioLogin').value.trim();
-    const senha = document.getElementById('senhaLogin').value.trim();
-
-    if (!nome || !senha) {
-        alert("Preencha todos os campos!");
-        return;
-    }
-
-    const resultado = await loginNoFirebase(nome, senha);
-    if (!resultado.sucesso) {
-        alert("Usuário ou senha incorretos!");
-        return;
-    }
-
-    // Atualiza localStorage
-    let usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
-    let usuario = usuarios.find(u => u.nome === nome);
-    if (!usuario) {
-        usuario = { nome, senha, ehAdmin: resultado.dados.ehAdmin };
-        usuarios.push(usuario);
-        localStorage.setItem('usuarios', JSON.stringify(usuarios));
-    }
-
-    localStorage.setItem('usuarioAtual', nome);
-    if (usuario.ehAdmin) mostrarTelaInicialAdmin();
-    else mostrarTelaPrincipal();
-}
+window.carregarUsuariosFirebase = carregarUsuariosFirebase;
+window.excluirUsuarioFirebase = excluirUsuarioFirebase;
 </script>
 </body>
 </html>
