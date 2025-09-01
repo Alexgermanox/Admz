@@ -1588,31 +1588,36 @@ let csv = 'Usuário,Data,Hora,Tipo\n';
 
   // Login no Firebase
   async function loginNoFirebase(usuario, senha) {
-    const email = formatarEmail(usuario);
-    try {
-      await signInWithEmailAndPassword(auth, email, senha);
-      console.log("Login no Firebase bem-sucedido:", email);
-      return true;
-    } catch (error) {
-      console.error("Erro no login Firebase:", error);
-      return false;
-    }
+  // Garante que o email será formatado
+  const email = usuario.includes('@') ? usuario : `${usuario}@admz.app`;
+  
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, senha);
+    console.log("Login no Firebase bem-sucedido:", cred.user.email);
+    return true;
+  } catch (error) {
+    console.error("Erro no login Firebase:", error.code, error.message);
+    return false;
   }
+}
 
-  // Carregar usuários
-  async function carregarUsuariosFirebase() {
-    try {
-      const querySnapshot = await getDocs(collection(db, "usuarios"));
-      const usuarios = [];
-      querySnapshot.forEach((doc) => {
-        usuarios.push(doc.data());
-      });
-      localStorage.setItem('usuarios', JSON.stringify(usuarios));
-      console.log("Usuários carregados do Firebase:", usuarios);
-    } catch (error) {
-      console.error("Erro ao carregar usuários do Firebase:", error);
-    }
+
+  // Apenas para cache temporário se quiser, mas recarrega sempre do Firestore
+async function carregarUsuariosFirebase() {
+  try {
+    const querySnapshot = await getDocs(collection(db, "usuarios"));
+    const usuarios = [];
+    querySnapshot.forEach((doc) => {
+      usuarios.push(doc.data());
+    });
+    console.log("Usuários carregados do Firebase:", usuarios);
+    return usuarios; // Retorna lista para ser usada diretamente
+  } catch (error) {
+    console.error("Erro ao carregar usuários do Firebase:", error);
+    return [];
   }
+}
+
 
   // Excluir usuário
   async function excluirUsuarioFirebase(nome) {
